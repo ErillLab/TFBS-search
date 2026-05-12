@@ -16,7 +16,6 @@ jobs:
           node-version: 20
 
       - name: Install and build
-        working-directory: frontend
         run: |
           npm install
           npm run build
