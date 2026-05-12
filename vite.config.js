@@ -10,7 +10,7 @@ export default defineConfig({
     vue(),
     vueDevTools(),
   ],
-  base: '/TFBS-search',
+  base: '/TFBS-search/',
   optimizeDeps:{
     exclude: ['pyodide']
   },

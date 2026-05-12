@@ -28,7 +28,7 @@ async function _loadTfbsModules(pyodide) {
     ]
 
     for (const modulePath of tfbsModules) {
-        const response = await fetch(`/python/${modulePath}`)
+        const response = await fetch(`${import.meta.env.BASE_URL}python/${modulePath}`)
         if (!response.ok) {
             throw new Error(`Failed to load module: ${modulePath}`)
         }
