@@ -37,7 +37,7 @@ class Motif:
         self.pssm = motif_to_pssm(bio_motif, background=self.background, pseudocount=self.pseudocount)
         
     @classmethod
-    def load_motif(cls, file_path):
+    def load_motif(cls, file_path, pseudocount=0.01, background=None,):
         """
         Load a motif from a file and wrap it in a Motif instance.
         Parameters:
@@ -46,7 +46,7 @@ class Motif:
             A fully initialized Motif object.
         """
         bio_motif = loader_motifs.load_motif(file_path)
-        return cls(bio_motif)
+        return cls(bio_motif, pseudocount=pseudocount, background=background)
     @classmethod
     def from_list_of_sequences(cls, seq):
         bio_motif = loader_motifs.from_list_of_sequences(seq)

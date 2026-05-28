@@ -49,7 +49,7 @@
     --color-text: var(--vt-c-text-dark-2);
   }
 }
-
+/* 
 *,
 *::before,
 *::after {
@@ -83,4 +83,129 @@ body {
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+} */
+/* --- Generic section container --- */
+.section-block {
+  background: white;
+  padding: 2rem;
+  margin-bottom: 2rem;
+  border-radius: 16px;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.06);
+  width: 100%;
+}
+
+/* --- Titles --- */
+.section-block h2 {
+  margin-bottom: 1rem;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+.section-block h3 {
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+}
+
+/* --- Upload blocks --- */
+.upload-block {
+  margin-top: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+/* --- Labels --- */
+.label {
+  display: block;
+  margin-bottom: 0.4rem;
+  font-weight: 500;
+}
+
+/* --- Inputs --- */
+.input-text,
+.input-file,
+.input-textarea {
+  width: 100%;
+  padding: 0.6rem 1rem;
+  border: 1.5px solid #ddd;
+  border-radius: 10px;
+  font-size: 1rem;
+  font-family: inherit;
+  margin-top: 0.3rem;
+}
+
+.input-text:focus,
+.input-textarea:focus {
+  outline: none;
+  border-color: #000;
+}
+
+/* File input: keep minimal */
+.input-file {
+  padding: 0.4rem;
+}
+
+/* Textarea */
+.input-textarea {
+  resize: vertical;
+  min-height: 120px;
+}
+
+/* --- Buttons --- */
+.action-btn,
+.remove-btn {
+  padding: 0.6rem 1.2rem;
+  background-color: #000;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  cursor: pointer;
+  margin-top: 0.8rem;
+  transition: background-color 0.25s ease;
+}
+
+.action-btn:hover,
+.remove-btn:hover {
+  background-color: #444;
+}
+
+.action-btn:disabled {
+  background-color: #bbb;
+  cursor: not-allowed;
+}
+
+/* Remove button small */
+.remove-btn {
+  padding: 0.3rem 0.8rem;
+  font-size: 0.85rem;
+  margin-left: 0.5rem;
+}
+
+/* --- Uploaded list --- */
+.uploaded-list {
+  list-style: none;
+  padding-left: 0;
+  margin-top: 0.8rem;
+}
+
+.uploaded-list li {
+  margin-bottom: 0.5rem;
+}
+
+/* --- Status messages --- */
+.status {
+  font-weight: 500;
+  margin-bottom: 1rem;
+}
+
+.status.loading {
+  color: orangered;
+}
+
+.status.ready {
+  color: green;
+}
+
+.status.error {
+  color: red;
 }

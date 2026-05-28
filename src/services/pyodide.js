@@ -24,7 +24,9 @@ async function _loadTfbsModules(pyodide) {
         'tfbs/motif/threshold.py',
         'tfbs/scan/__init__.py',
         'tfbs/scan/scanner.py',
-        'tfbs/scan/annotation.py'
+        'tfbs/scan/annotation.py',
+        'tfbs/pipeline.py',
+        'tfbs/update_pipeline.py'
     ]
 
     for (const modulePath of tfbsModules) {
@@ -60,11 +62,11 @@ async function _loadPyodide() {
         `)
 
     await _loadTfbsModules(pyodide)
-    await pyodide.runPythonAsync(`
-        from tfbs.genome.genome import Genome
-        from tfbs.motif.motif import Motif
-        from tfbs.scan.scanner import scan_sequence
-    `)
+    // await pyodide.runPythonAsync(`
+    //     from tfbs.genome.genome import Genome
+    //     from tfbs.motif.motif import Motif
+    //     from tfbs.scan.scanner import scan_sequence 
+    // `)
     return pyodide
 }
 

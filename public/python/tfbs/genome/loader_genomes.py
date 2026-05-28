@@ -63,7 +63,6 @@ def load_from_accession(accession, email="test@example.com"):
         time.sleep(0.5)  # To respect NCBI rate limits
     logger.info(f"Successfully loaded {len(records)} records for {len(accession)} accessions")
     return records
-    raise NotImplementedError("Loading from accession is not implemented yet")
 
 def load_from_species(species_name):
     """
@@ -71,3 +70,13 @@ def load_from_species(species_name):
     This functionality is not implemented yet.
     """
     raise NotImplementedError("Loading from species is not implemented yet")
+
+def load_genome(data, email="test@example.com"):
+    sample = data[0] if isinstance(data, list) else data
+    is_file = any(str(sample).lower().endswith(ext) for ext in GENBANK_FILE_EXTENSIONS)
+    if is_file:
+        paths = data if isinstance(data, list) else [data]
+        return load_from_file(paths)
+    else:
+        return load_from_accession(data, email=email)
+         
