@@ -167,7 +167,11 @@ def infer_operon(gene, genes_sequence, max_distance=100):
     Returns:
         list --> List of locus tags belonging to the inferred operon.
     """
-    operon = [gene["locus_tag"]]
+    # operon = [gene["locus_tag"]]
+    operon = [{
+        "locus_tag": gene["locus_tag"],
+        "distance": 0
+    }]
     current_boundry = gene["end"] if gene["strand"] == 1 else gene["start"]
     index_gene = genes_sequence.index(gene)
     if gene["strand"] == 1:
@@ -178,10 +182,15 @@ def infer_operon(gene, genes_sequence, max_distance=100):
                     distance = 0
                 elif distance > max_distance:
                     break
+                # operon.append({
+                #     "Gene locus tag": gen["locus_tag"],
+                #     "distance": distance
+                # })
                 operon.append({
-                    "Gene locus tag": gen["locus_tag"],
+                    "locus_tag": gen["locus_tag"],
                     "distance": distance
                 })
+
                 current_boundry = max(current_boundry, gen["end"])
             else:
                 break
@@ -301,11 +310,20 @@ def find_regulated_genes(genome, sites, margin_downstream=50, margin_upstream=25
             if double_report and len(annotations) > 1:
                 annotations_to_report = annotations
             else:
-                ops = [a for a in annotations if a["Site Mode"] == "Operator"]
+                ops_upstream = [a for a in annotations if a["Site Mode"] == "Operator" and a["Relative Distance"] < 0]
+                ops_downstream = [a for a in annotations if a["Site Mode"] == "Operator" and a["Relative Distance"] > 0]
                 intra = [a for a in annotations if a["Site Mode"] == "Intragenic"]
                 inter = [a for a in annotations if a["Site Mode"] == "Intergenic"]
-                if ops:
-                    annotations_to_report = [ops[0]]
+                if ops_upstream:
+                    best_op = min(
+                        ops_upstream, key=lambda x: abs(int(x["Relative Distance"]))
+                    )
+                    annotations_to_report = [best_op]
+                elif ops_downstream:
+                    best_op = min(
+                        ops_downstream, key=lambda x: abs(int(x["Relative Distance"]))
+                    )
+                    annotations_to_report = [best_op]
                 elif intra:
                     annotations_to_report = [intra[0]]
                 elif inter:

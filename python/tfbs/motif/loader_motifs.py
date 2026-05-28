@@ -83,21 +83,26 @@ def from_jaspar(file_path):
         raise ValueError(f"Error loading motif from JASPAR file: {e}")
     
 
-def load_motif(file_path):
+def load_motif(source):
     """
     Dispatch function that loads a motif based on file extension.
     Parameters:
-        file_path : str --> Path to a motif file in FASTA, TXT, or JASPAR format.
+        source : str --> Path to a motif file in FASTA, TXT, or JASPAR format.
+                 or
+                 list --> List of motif sequences
     Returns:
         Bio.motifs.Motif -->The parsed motif object.
 
     """
-    if file_path.endswith(".fasta") or file_path.endswith(".fa"):
-        return from_fasta(file_path)
-    elif file_path.endswith(".txt"):
-        return from_text_file(file_path)
-    elif file_path.endswith(".jaspar"):
-        return from_jaspar(file_path)
-    else:
-        logger.error(f"Unsupported file format: {file_path}")
-        raise ValueError(f"Unsupported file format: {file_path}")
+    if isinstance(source, list):
+        return from_list_of_sequences(source)
+    elif isinstance(source, str):
+        if source.endswith(".fasta") or source.endswith(".fa"):
+            return from_fasta(source)
+        elif source.endswith(".txt"):
+            return from_text_file(source)
+        elif source.endswith(".jaspar"):
+            return from_jaspar(source)
+        else:
+            logger.error(f"Unsupported file format: {source}")
+            raise ValueError(f"Unsupported file format: {source}")
