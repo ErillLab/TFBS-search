@@ -111,7 +111,7 @@
                     type="text"
                     v-model="speciesQuery"
                     class="input-text"
-                    placeholder="Ecoli noseque"
+                    placeholder="Escherichia coli"
                     :disabled="loadingSpecies"
                     @keyup.enter="searchSpecies">
 

@@ -3,7 +3,7 @@ const BASE =  "https://api.ncbi.nlm.nih.gov/datasets/v2"
 export async function searchAssemblies(speciesName) {
     const encoded = encodeURIComponent(speciesName.trim())
     const params = new URLSearchParams({
-        "filters.reference_only": "true",
+        "filters.reference_only": "false",
         "filters.assembly_source": "refseq",
         "filters.exclude_atypical": "true",
        
