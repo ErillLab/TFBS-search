@@ -34,7 +34,7 @@
             >
             <i class="ti ti-upload drop-zone-icon" aria-hidden="true"></i>
             <div class="drop-zone-label">
-                <strong>Click to upload</strong> or drag & drop
+                <strong>Click to upload</strong> genome files
             </div>
             <div class="drop-zone-exts">.gb · .gbk · .genbank · .gbff</div>
             <input 
@@ -94,16 +94,53 @@
                     <i class="ti ti-x"></i>
                     </button>
                 </div>
-                </div>
+            </div>
 
         </div>
-        <!-- <div v-if="statusMessage" class="status-toast" :class="statusOk ? 'ok' : 'error'">
-            <i class="ti" :class="statusOk ? 'ti-circle-check' : 'ti-alert-circle'" aria-hidden="true"></i>
-            <span>{{ statusMessage }}</span>
-            <button class="toast-close" @click="statusMessage = ''" aria-label="Dismiss">
-            <i class="ti ti-x" aria-hidden="true"></i>
-            </button>
+        <!-- <div v-if="activeTab === 'species'">
+            <SpeciesSearch :disables="!isReady"
+            @confirmed="onSpeciesConfirmed"
+            @species-uploaded = "uploadedSpecies = $event"
+            />
         </div> -->
+        <div v-if="activeTab === 'species'">
+            <div class="form-group">
+                <label class="form-label">Species name</label>
+                <div class="input-row">
+                    <input 
+                    type="text"
+                    v-model="speciesQuery"
+                    class="input-text"
+                    placeholder="Ecoli noseque"
+                    :disabled="loadingSpecies"
+                    @keyup.enter="searchSpecies">
+
+                    <button class="btn btn-primary" :disabled="loadingSpecies || !speciesQuery.trim()"
+                    @click="searchSpecies">
+                        <i v-if="loadingSpecies" class="ti ti-loader-2 ti-spin"></i>
+                        <span v-else> Search</span>
+                    </button>
+                </div>
+                <p class="input-hint"> Searches NCBI reference geomes (RefSeq)</p>
+            </div>
+
+            <div v-if="uploadedSpecies.length" class="file-list">
+                <div v-for="(item, index) in uploadedSpecies" :key="item.assemblyAccession" class="file-item">
+                    <span class="file-item-name">
+                        <i class="ti ti-dna"></i>
+                        <span> {{ item.organismName }}</span>
+                        <span style="font-size: 11px; color: var(--color--text-secondary); margin-left: 4px;">
+                            {{ item.assemblyAccession }} · {{ item.count }} sequences
+                        </span>
+                    </span>
+                    <button class="btn btn-ghost" @click="removeSpecies(index)" aria-label="Remove">
+                        <i class="ti ti-x"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+
         <transition name="toast">
         <div
             v-if="statusMessage"
@@ -122,6 +159,63 @@
         </div>
         </transition>
 
+        <!-- Modal assemblies -->
+        <teleport to="body">
+            <div
+                v-if="showSpeciesModal"
+                class="modal-backdrop"
+                @click.self="closeSpeciesModal()"
+            >
+                <div class="modal">
+                    <div class="modal-header">
+                        <div>
+                            <p class="modal-title"> Referece assemblies</p>
+                            <p class="modal-subtitle">
+                                {{ speciesAssemblies.length }} results for <em> {{ speciesQuery }}</em>.
+                            </p>
+                        </div>
+                        <button class="btn btn-ghost" @click="closeSpeciesModal()" aria-label="Close">
+                            <i class="ti ti-x"></i>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <div
+                        v-for="a in speciesAssemblies"
+                        :key="a.accession"
+                        class="modal-item"
+                        :class="{selected: speciesSelected?.accession == a.accession}"
+                        @click="speciesSelected = a"
+                        >
+                            <div class="modal-item-row">
+                                <i class="ti" :class="speciesSelected?.accession === a.accession ? 'ti-circle-check' : 'ti-dna'"></i>
+                                <span class="modal-item-accession">{{ a.accession }}</span> <p> | </p>
+                                <span>{{ a.organismName }}</span>
+                                <span v-if="a.refseqCategory" class="badge badge-ref">{{ a.refseqCategory }}</span>
+                                <span class="badge badge-level">{{ a.assemblyLevel }}</span>
+                            </div>
+                            <p class="modal-item-meta">
+                                {{ a.assemblyName }} · {{ a.submitter }} ·
+                                {{ a.releaseDate }} · {{ a.chromosomeCount }} chr
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="modal-footer">
+                        <span class="input-hint" style="margin: 0;">
+                            {{ speciesSelected ? 'All sequences will be loaded' : 'Click an assembly to select it' }}
+                        </span>
+                        <button class="btn btn-primary" :disabled="!speciesSelected || loadingSpecies"
+                        @click="confirmSpecies(speciesSelected)">
+                        <i v-if="loadingSpecies" class="ti ti-loader-2 ti-spin"></i>
+                        <span v-else>Confirm selected</span>
+                        </button>
+                    </div>
+                </div>
+        
+            </div>
+        </teleport>
+
+
         
 
     </div>
@@ -132,10 +226,14 @@
 <script>
 import { writeToVirtualFS, readFileAsText } from '@/services/tfbsService'
 import { getPyodide } from '@/services/pyodide'
+import { searchAssemblies, getSequenceReports } from '@/services/ncbiDatasetService.js';
+// import SpeciesSearch from './SpeciesSearch.vue';
 
 export default {
   name: 'GenomeUploader',
   emits: ['genome-loaded'],
+
+
   data() {
     return {
         open: true,
@@ -143,7 +241,7 @@ export default {
         tabs: [
             { id: 'file',      label: 'Upload file' },
             { id: 'accession', label: 'Accession'   },
-            {id: 'spices', label: 'Spices'}
+            {id: 'species', label: 'Species'}
         ],
         pyodide: null,
         uploadedFiles: [],
@@ -153,7 +251,15 @@ export default {
         statusOk: false,
         pyodideStatus: 'loading',
         statusTimeout: null,
-        loadingAccession: false
+        loadingAccession: false,
+        mes: "",
+
+        speciesQuery: '',
+        uploadedSpecies: [],
+        speciesAssemblies: [], 
+        speciesSelected: null,
+        loadingSpecies: false,
+        showSpeciesModal: false
     }
   },
   async mounted() {
@@ -221,35 +327,94 @@ records = load_from_file(["${path}"])
         this.$emit('genome-loaded', { source: 'accession', data: this.uploadedAccessions.map(a => a.acc) })
       
     },
-    // removeFile(index) {
-    //   try { this.pyodide.FS.unlink(this.uploadedFiles[index].path) }
-    //   catch { console.warn('File already removed') }
-    //   this.uploadedFiles.splice(index, 1)
-    //   this.$emit('genome-loaded', {
-    //     source: 'file',
-    //     data: this.uploadedFiles.map(g => g.path)
-    //   })
-    // }, 
+    onSpeciesConfirmed({ accessions, assemblyName }) {
+        for (const acc of accessions) {
+            if (!this.uploadedAccessions.find(a => a.acc === acc)) {
+            this.uploadedAccessions.push({ acc, status: 'ok' })
+            }
+        }
+        this.$emit('genome-loaded', {
+            source: 'accession',
+            data: this.uploadedAccessions.map(a => a.acc)
+        })
+        console.log(`Added ${accessions.length} sequences from ${assemblyName}`, true)
+    },
+    async searchSpecies(){
+        if(!this.speciesQuery.trim()) return
+        this.loadingSpecies = true
+        try{
+            this.speciesAssemblies = await searchAssemblies(this.speciesQuery)
+            if(!this.speciesAssemblies.length){
+                this.showStatus(`No reference assemblies found for "${this.speciesQuery}"`, false)
+                return
+            }
+            this.showSpeciesModal = true //obre menu de resultats
+        } catch(e){
+            this.showStatus(e.message, false)
+        } finally {
+            this.loadingSpecies = false
+        }
+    },
+    async confirmSpecies(assembly){
+        this.loadingSpecies = true
+        try{
+            const sequences = await getSequenceReports(assembly.accession)
+            const accessions = sequences.map(s => s.accession).filter(Boolean)
+
+            console.log(accessions)
+            // console.log("accessions", accessions)
+            // for (const acc of accessions) {
+            //     console.log("dins del bucle")
+            //     this.uploadedSpecies.push({acc, status:'ok'})
+            // }
+            this.uploadedSpecies.push({
+                assemblyAccession: assembly.accession,
+                assemblyName: assembly.assemblyName,
+                organismName: assembly.organismName,
+                accessions,
+                count: accessions.length
+            })
+
+            console.log(this.uploadedSpecies)
+            this.$emit('genome-loaded', {
+                source: 'accession',
+                data: this.uploadedSpecies.flatMap(a => a.accessions)
+            })
+            this.showStatus(`${accessions.length} sequences loaded from ${assembly.assemblyName}`)
+            this.closeSpeciesModal()  
+            this.activeTab = 'species'
+        } catch (e) {
+            this.showStatus(e.message, false)
+        } finally {
+            this.loadingSpecies = false
+        }
+
+    },
+    closeSpeciesModal() {
+        this.showSpeciesModal  = false
+        this.speciesAssemblies = []
+        this.speciesSelected   = null
+    },
+
     removeFile(index) {
-  if (!this.isReady) {
-    this.showStatus("Pyodide is still loading", false)
-    return
-  }
+        if (!this.isReady) {
+            this.showStatus("Pyodide is still loading", false)
+            return
+        }
 
-  try {
-    this.pyodide.FS.unlink(this.uploadedFiles[index].path)
-  } catch (e) {
-    console.warn("FS unlink error:", e)
-  }
+        try {
+            this.pyodide.FS.unlink(this.uploadedFiles[index].path)
+        } catch (e) {
+            console.warn("FS unlink error:", e)
+        }
 
-  this.uploadedFiles.splice(index, 1)
+        this.uploadedFiles.splice(index, 1)
 
-  this.$emit('genome-loaded', {
-    source: 'file',
-    data: this.uploadedFiles.map(g => g.path)
-  })
-},
-
+        this.$emit('genome-loaded', {
+            source: 'file',
+            data: this.uploadedFiles.map(g => g.path)
+        })
+    },
 
     removeAccession(index){
         this.uploadedAccessions.splice(index, 1)
@@ -258,13 +423,37 @@ records = load_from_file(["${path}"])
             data: this.uploadedAccessions.map(a => a.acc)
         })
     }, 
+    removeSpecies(index) {
+        this.uploadedSpecies.splice(index, 1)
+        this.$emit('genome-loaded', {
+            source: 'accession',
+            data: this.uploadedSpecies.flatMap(s => s.accessions)
+        })
+    },
     changeTabs(tabId){
-        if( tabId === 'accession' && this.uploadedFiles.length > 0){
-            this.showStatus('Remove uploaded genome files before using accession mode.', false)
+
+        // if (this.activeTab !== tabId && this.uploadedAccessions.length > 0 || this.uploadedFiles.length > 0 || this.uploadedSpecies.length > 0){
+        //     this.showStatus('Remove loaded accessions before using file upload mode.', false)
+        //     return
+        // }
+        // this.activeTab = tabId
+        let mes = 'genome'
+        if (this.activeTab === 'accession'){
+            mes = 'loaded accessions'
+        } else if (this.activeTab === 'file') {
+            mes = 'uploaded genome files'
+        } else {
+            mes = 'loaded species'
+        }
+
+        if( tabId === 'accession' && (this.uploadedFiles.length > 0 || this.uploadedSpecies.length > 0)){
+            this.showStatus(`Remove ${mes} before using accession mode.`, false)
             return
-        } else if (tabId === 'file' && this.uploadedAccessions.length > 0){
-            this.showStatus('Remove loaded accessions before using file upload mode.', false)
-           
+        } else if (tabId === 'file' && (this.uploadedAccessions.length > 0 || this.uploadedSpecies.length > 0)){
+            this.showStatus(`Remove ${mes} before using file upload mode.`, false)
+            return
+        } else if (tabId === 'species' && (this.uploadedAccessions.length> 0 || this.uploadedFiles.length > 0)){
+            this.showStatus(`Remove ${mes} before using file upload mode`, false)
             return
         }
         this.activeTab = tabId
@@ -284,7 +473,7 @@ records = load_from_file(["${path}"])
             return this.pyodideStatus == 'ready'
         }, 
         isLoaded() {
-            return this.uploadedFiles.length > 0 || this.uploadedAccessions.length > 0;
+            return this.uploadedFiles.length > 0 || this.uploadedAccessions.length > 0 || this.uploadedSpecies.length > 0;
         },
         hasFiles(){
             return this.uploadedFiles.length > 0

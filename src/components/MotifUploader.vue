@@ -36,7 +36,7 @@
             <div class="drop-zone-label">
                 <strong>Click to upload</strong> a motif file
             </div>
-            <div class="drop-zone-exts">.fastta · .fa · .txt · .jaspar</div>
+            <div class="drop-zone-exts">.fasta · .fa · .txt · .jaspar</div>
             <input 
                     ref="fileInput"  type="file"
                     accept=".fasta,.fa,.txt,.jaspar"

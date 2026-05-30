@@ -44,27 +44,37 @@ export default{
             if (value === null || value === undefined) return "";
 
             /* ---------- CAS ESPECIAL OPERON ---------- */
+            // if (key === "Operon") {
+
+            //     // convertim a string estil Python
+            //     let text;
+
+            //     // if (Array.isArray(value) || typeof value === "object") {
+            //     //     text = JSON.stringify(value)
+            //     //         .replace(/"/g, "'"); // JSON → python-like
+            //     // } else {
+            //     //     text = String(value);
+            //     // }
+
+            //     // // Operon pot contenir comes → necessita quotes CSV
+            //     // return `"${text}"`;
+            //     if(Array.isArray(value) || typeof value === "object") {
+            //         text = JSON.stringify(value).replace(/"/g, "'");
+            //     } else {
+            //         text = String(value)
+            //     }
+            //     return `"${text}"`;
+            // }
             if (key === "Operon") {
-
-                // convertim a string estil Python
-                let text;
-
-                // if (Array.isArray(value) || typeof value === "object") {
-                //     text = JSON.stringify(value)
-                //         .replace(/"/g, "'"); // JSON → python-like
-                // } else {
-                //     text = String(value);
-                // }
-
-                // // Operon pot contenir comes → necessita quotes CSV
-                // return `"${text}"`;
-                if(Array.isArray(value) || typeof value === "object") {
-                    text = JSON.stringify(value).replace(/"/g, "'");
-                } else {
-                    text = String(value)
+                if (Array.isArray(value)) {
+                    const text = value
+                        .map(item => `${item.locus_tag}:${item.distance}`)
+                        .join("|");
+                    return `"${text}"`;
                 }
-                return `"${text}"`;
+                return `"${String(value)}"`;
             }
+
 
             /* ---------- RESTA DE CAMPS ---------- */
 

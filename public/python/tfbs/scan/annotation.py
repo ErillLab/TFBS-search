@@ -182,10 +182,7 @@ def infer_operon(gene, genes_sequence, max_distance=100):
                     distance = 0
                 elif distance > max_distance:
                     break
-                # operon.append({
-                #     "Gene locus tag": gen["locus_tag"],
-                #     "distance": distance
-                # })
+
                 operon.append({
                     "locus_tag": gen["locus_tag"],
                     "distance": distance
@@ -204,9 +201,10 @@ def infer_operon(gene, genes_sequence, max_distance=100):
                 elif distance > max_distance:
                     break
                 operon.append({
-                    "Gene locus tag": gen["locus_tag"],
+                    "locus_tag": gen["locus_tag"],
                     "distance": distance
                 })
+
                 current_boundry = min(current_boundry, gen["start"])
           
     return operon
