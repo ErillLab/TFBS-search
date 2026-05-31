@@ -8,11 +8,11 @@ export default{
         motif: {type: String, required: true},
         params: {type: Object, required: true}
     }, 
-    emits: ['pipeline-finished'],
+    emits: ['pipeline-finished', 'reset-all', 'pipeline-start'],
     data() {
         return{
             running: false,
-            error: ""
+            error: "",
         };
     }, 
     computed: {
@@ -32,21 +32,28 @@ export default{
     },
     methods: {
         async runPipeline(){
-            this.error = "";
-            this.running = true;
-            try{
-                const result = await runTfbsPipeline({
-                    genomeSource: this.genome.source,
-                    genomeData: this.genome.data,
-                    motifPath: this.motif,
-                    params: this.params
-                });
-                this.$emit("pipeline-finished", result)
-            } catch(e){
-                this.error = e.message;
-            } finally {
-                this.running = false;
-            }
+          this.$emit("pipeline-finished", null)
+          this.error = "";
+          this.running = true;
+          this.$emit('pipeline-start', true)
+          try{
+              const result = await runTfbsPipeline({
+                  genomeSource: this.genome.source,
+                  genomeData: this.genome.data,
+                  motifPath: this.motif,
+                  params: this.params
+              });
+              this.$emit("pipeline-finished", result)
+          } catch(e){
+              this.error = e.message;
+          } finally {
+              this.running = false;
+              this.$emit('pipeline-start', false)
+
+          }
+        }, 
+        resetAll(){
+          this.$emit('reset-all')
         }
     }
 };
@@ -62,16 +69,20 @@ export default{
                     <p class="run-subtitle">Genome and motif loaded · {{ paramsSummary }}</p>
                 </div>
             </div>
-
-            <button 
-            class="btn btn-run"
-            :disabled="!canRun || running"
-            @click="runPipeline"
-            >
-            <span v-if="running" class="btn-run-spinner"></span>
-            <i v-else class="ti ti-player-play" aria-hidden></i>
-            {{ running ? 'Running...' : 'Run scanner' }}
-            </button>
+            <div class="run-actions">
+              <button 
+              class="btn btn-run"
+              :disabled="!canRun || running"
+              @click="runPipeline"
+              >
+              <span v-if="running" class="btn-run-spinner"></span>
+              <i v-else class="ti ti-player-play" aria-hidden></i>
+              {{ running ? 'Running...' : 'Run scanner' }}
+              </button>
+              <button class="btn btn-reset" @click="resetAll">
+                <i class="ti ti-trash"></i> Reset all
+              </button>
+            </div>
         </div>
         <div v-if="running" class="run-progress">
             <div class="run-progress-bar"></div>
@@ -184,4 +195,22 @@ export default{
   background: none; border: none; cursor: pointer;
   color: inherit; font-size: 14px; padding: 0;
 }
+.run-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-left: auto; /* empeny el bloc cap a la dreta */
+}
+.btn-reset {
+  background: transparent;
+  border: 1px solid var(--c-border);
+  color: var(--c-muted);
+  padding: 0.55rem 1rem;
+  border-radius: 9px;
+  font-size: 0.85rem;
+}
+.btn-reset:hover {
+  background: var(--c-muted);
+}
+
 </style>

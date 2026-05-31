@@ -1,7 +1,7 @@
 <template>
     <div class="panel">
 
-        <div class="panel-header" @click="open = !open">
+        <div class="panel-header" @click="toggle">
         <div class="panel-header-left">
             <div class="panel-icon">
                 <!-- <i class="ti ti-timeline-event" aria-hidden="true"></i> -->
@@ -13,7 +13,7 @@
         <i class="ti ti-chevron-down chevron" :class="{open}" aria-hidden="true"></i>
     </div>
 
-    <div v-show="open" class="panel-body"> 
+    <div v-show="open" v-if="!isRunning" class="panel-body"> 
         <!-- Tabs -->
         <div class="method-tabs">
             <button 
@@ -176,6 +176,9 @@ import { getPyodide } from '@/services/pyodide';
 export default{
     name: "MotifUploader",
     emits: ['motif-loaded'],
+    props: {
+        isRunning: Boolean
+    },
     data(){
         return{
             open: true,
@@ -190,8 +193,16 @@ export default{
             pyodideError: '',
             pyodide: null,
             motifText: "",
-            loadedFileName: null
+            loadedFileName: null,
+            open: true,
         };
+    },
+    watch: {
+        isRunning(newVal){
+            if(newVal === true){
+                this.open = false
+            }
+        }
     },
     async mounted() {
         try {
@@ -290,6 +301,11 @@ motif = Motif.load_motif("${path}")
                 return
             }
             this.activeTab = tabId
+        },
+        toggle(){
+            if(!this.isRunning) {
+                this.open = !this.open
+            }
         },
     },
     computed: {

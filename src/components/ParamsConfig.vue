@@ -2,6 +2,9 @@
 export default{
     name: "ParamsConfig", 
     emits: ["config-params"],
+    props: {
+        isRunning: Boolean
+    },
     data() {
         return{
           open: false,
@@ -17,7 +20,8 @@ export default{
           marginDownstream: 50,
           inferOperons: false,
           max_distance_operon: 100,
-          doubleReport: true
+          doubleReport: true,
+          open: true, 
         }
     },
     computed:{
@@ -53,37 +57,44 @@ export default{
         }
     }, 
     watch: {
-        thresholdMethod(newMethod){
-            if (["fpr", "fnr", "balanced"].includes(newMethod)){
-                if(this.thresholdValue > 1)
-                    this.thresholdValue = 1;
-            }
-            this.emitParams();
-        }, 
-        thresholdValue(newValue){
-          if (["fpr", "fnr", "balanced"].includes(this.thresholdMethod) && newValue > 1) {
-            this.thresholdValue = 1;
-          }
+      isRunning(newVal){
+        if(newVal === true){
+            this.open = false
+        }
+      },
+      thresholdMethod(newMethod){
+        if (["fpr", "fnr", "balanced"].includes(newMethod)){
+          if(this.thresholdValue > 1)
+                this.thresholdValue = 1;
+        }
+        this.emitParams();
+      }, 
+      thresholdValue(newValue){
+        if (["fpr", "fnr", "balanced"].includes(this.thresholdMethod) && newValue > 1) {
+          this.thresholdValue = 1;
+        }
+        this.emitParams();
 
-          this.emitParams();
-
-        },
-        pseudocount: "emitParams",
-        thresholdValue: "emitParams",
-        background: "emitParams",
-        integration_log: "emitParams",
-        marginUpstream: "emitParams",
-        marginDownstream: "emitParams",
-        inferOperons: "emitParams",
-        max_distance_operon: "emitParams",
-        doubleReport: "emitParams"
+      },
+      pseudocount: "emitParams",
+      thresholdValue: "emitParams",
+      background: "emitParams",
+      integration_log: "emitParams",
+      marginUpstream: "emitParams",
+      marginDownstream: "emitParams",
+      inferOperons: "emitParams",
+      max_distance_operon: "emitParams",
+      doubleReport: "emitParams"
     },
     mounted() {
         this.emitParams();
     },
     methods: {
       openParam() {
-        this.open = !this.open
+        if(!this.isRunning){
+          this.open = !this.open
+        }
+        
         if(this.open) {
           this.$nextTick(() => {
             this.$el.scrollIntoView({ behavior: 'smooth', block: 'start'})
@@ -96,21 +107,22 @@ export default{
       },
 
       emitParams(){
-          this.$emit("config-params", {
-              pseudocount: this.pseudocount,
-              threshold_method: this.thresholdMethod,
-              threshold_value:
-                  this.thresholdMethod === "patser" ? null : this.thresholdValue,
-              background: this.background,
-              integration_log: this.integration_log,
-              margin_upstream: this.marginUpstream,
-              margin_downstream: this.marginDownstream,
-              infer_operons: this.inferOperons,
-              max_distance_operon: this.inferOperons ? this.max_distance_operon : null,
-              double_report: this.doubleReport
+        this.$emit("config-params", {
+            pseudocount: this.pseudocount,
+            threshold_method: this.thresholdMethod,
+            threshold_value:
+                this.thresholdMethod === "patser" ? null : this.thresholdValue,
+            background: this.background,
+            integration_log: this.integration_log,
+            margin_upstream: this.marginUpstream,
+            margin_downstream: this.marginDownstream,
+            infer_operons: this.inferOperons,
+            max_distance_operon: this.inferOperons ? this.max_distance_operon : null,
+            double_report: this.doubleReport
 
           });
-        }
+      },
+      
     }
 };   
 </script>
@@ -130,7 +142,7 @@ export default{
     <i class="ti ti-chevron-down chevron" :class="{open}" aria-hidden="true"></i>
     </div>
 
-    <div v-show="open" class="panel-body params-body" ref="paramsBody">
+    <div v-show="open" v-if="!isRunning" class="panel-body params-body" ref="paramsBody">
       <div class="params-grid">
         <!-- Scoring -->
         <section class="param-section">
@@ -263,7 +275,7 @@ export default{
 
           <div class="param-field">
             <div class="param-label-row">
-              <label class="form-label">Infer operons</label>
+              <label class="form-label">Operon inference</label>
               <span class="param-tooltip" data-tip="Group consecutive co-directional genes into operons when they are closer than the maximum operon distance.">
                 <i class="ti ti-info-circle" aria-hidden="true"></i>
               </span>
@@ -297,7 +309,7 @@ export default{
 
           <div class="param-field">
             <div class="param-label-row">
-              <label class="form-label">Double report</label>
+              <label class="form-label">Gene attribution</label>
               <span class="param-tooltip" data-tip="If a site is associated with multiple genes (e.g., divergent regions), report one row per gene. Disable to report only the primary association.">
                 <i class="ti ti-info-circle" aria-hidden="true"></i>
               </span>

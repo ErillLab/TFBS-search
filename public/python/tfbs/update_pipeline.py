@@ -173,6 +173,7 @@ def update_pipeline(
 
     if params is None:
         raise ValueError("params required")
+    print(params["threshold_value"])
 
     load_genome(genome_files, genome_accession)
     load_motif_if_needed(motif_file, params)

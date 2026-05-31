@@ -95,7 +95,7 @@
   margin-bottom: -1.5px;
   transition: color 0.15s;
   border-radius: 10px;
-margin-bottom:  -0.8px
+  margin-bottom: 0.3px
   
 }
 .method-tab:hover { color: var(--c-text); }
@@ -103,7 +103,6 @@ margin-bottom:  -0.8px
     background-color: black;
     color: var(--c-border);
   /* color: var(--c-text); */
-  border-bottom-color: var(--c-text);
 }
 
 /* ── Drop zone ── */
@@ -294,7 +293,7 @@ margin-bottom:  -0.8px
   border: 1px solid var(--c-border);
   border-radius: 16px;
   width: 100%;
-  max-width: 560px;
+  max-width:fit-content;
   max-height: 80vh;
   display: flex;
   flex-direction: column;

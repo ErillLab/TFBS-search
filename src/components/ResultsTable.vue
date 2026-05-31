@@ -88,56 +88,6 @@ export default {
   data() {
     return { open: false }
   },
-//   mounted() {
-//     if (!this.hits?.length) return
-//     const columns = [
-//       "Site ID", "Chromid Id", "Site Score", "Site Start", "Site End",
-//       "Site Strand", "Site Mode", "Relative Distance", "Gene locus tag",
-//       "Gene Name", "Protein Id", "Gene Start", "Gene End",
-//       "Gene Strand", "Gene Product", "Operon"
-//     ]
-//     const numericCols = new Set([
-//         "Site ID", "Site Score", "Site Start", "Site End",
-//         "Relative Distance", "Gene Start", "Gene End", "Gene Strand"
-//     ])
-
-//     const formatOperon = op => {
-//         if (!op) return "";
-//         if(Array.isArray(op)) {
-//             return op.map(g => `${g.locus_tag} (${g.distance})`).join("|");
-//         }
-//         return String(op)
-//     }
-//     // const rows = this.hits.map(hit => columns.map(col => hit[col]))
-//     const rows = this.hits.map(hit =>
-//         columns.map(col => {
-//             let v = hit[col]
-//             if(col === "Operon"){
-//                 v = formatOperon(v);
-//             }
-//             if (numericCols.has(col)) return Number(v)
-//             return v ?? ""
-//         })
-//     )
-//     new Grid({
-//       columns,
-//       data: rows,
-//       pagination: { limit: 10 },
-//       sort: true,
-//       search: true,
-//       resizable: true,
-//       className: {
-//         container: 'tfbs-grid-container',
-//         table:     'tfbs-grid-table',
-//         thead:     'tfbs-grid-thead',
-//         th:        'tfbs-grid-th',
-//         td:        'tfbs-grid-td',
-//         search:    'tfbs-grid-search',
-//         paginationButton: 'tfbs-grid-page-btn',
-//         paginationButtonCurrent: 'tfbs-grid-page-btn current',
-//       }
-//     }).render(this.$refs.grid)
-//   },
   watch: {
     hits: {
         immediate: true,
@@ -153,6 +103,7 @@ export default {
 
         if (this.grid) {
         this.grid.destroy()
+        this.grid = null
         }
 
         const columns = [
@@ -202,6 +153,7 @@ export default {
         pagination: { limit: 10 },
         sort: true,
         search: true,
+        resizable: true,
 
         className: {
             container: 'tfbs-grid-container',

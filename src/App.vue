@@ -31,7 +31,11 @@ export default{
       params:{},
       result: null,
       pyodideStatus: 'loading',
-      pyodide: null
+      pyodide: null, 
+      GenomeUploaderKey: 0,
+      MotifUploaderKey: 0,
+      paramsKey: 0,
+      isRunning: false,
     }
   }, 
   computed: {
@@ -47,7 +51,20 @@ export default{
       } catch {
         this.pyodideStatus = 'error'
       }
-  } 
+  },
+  methods: {
+    resetAll(){
+      this.genomePath = null
+      this.motifPath = null
+      this.params = {}
+      this.result = null
+      this.genome = null
+      this.motif = null
+      this.GenomeUploaderKey++
+      this.MotifUploaderKey++
+      this.paramsKey++
+    }
+  }
 }
 </script>
 
@@ -75,11 +92,13 @@ export default{
     <main class="app-main">
 
       <div class="panels-row">
-        <GenomeUploader @genome-loaded="genomePath = $event" />
-        <MotifUploader @motif-loaded="motifPath = $event" />
+        <GenomeUploader :key="GenomeUploaderKey" :is-running="isRunning" @genome-loaded="genomePath = $event" />
+        <MotifUploader :key="MotifUploaderKey" :is-running="isRunning" @motif-loaded="motifPath = $event" />
       </div>
 
       <ParamsConfig
+        :key="paramsKey"
+        :is-running="isRunning"
         @config-params="params = $event"
       />
 
@@ -88,7 +107,9 @@ export default{
         :genome="genomePath"
         :motif="motifPath"
         :params="params"
+        @pipeline-start="isRunning = $event"
         @pipeline-finished="result = $event"
+        @reset-all="resetAll"
       />
 
       <ResultsDownloader

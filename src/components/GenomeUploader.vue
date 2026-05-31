@@ -1,7 +1,7 @@
 <template>
   <div class="panel">
     <!-- Header -->
-    <div class="panel-header" @click="open = !open">
+    <div class="panel-header" @click="toggle">
         <div class="panel-header-left">
             <div class="panel-icon">
                 <i class="ti ti-dna" aria-hidden="true"></i>
@@ -230,245 +230,258 @@ import { searchAssemblies, getSequenceReports } from '@/services/ncbiDatasetServ
 // import SpeciesSearch from './SpeciesSearch.vue';
 
 export default {
-  name: 'GenomeUploader',
-  emits: ['genome-loaded'],
+    name: 'GenomeUploader',
+    emits: ['genome-loaded'],
+    props: {
+        isRunning: {type: Boolean, required: true}
+    },
+    data() {
+        return {
+            open: true,
+            activeTab: 'file',
+            tabs: [
+                { id: 'file',      label: 'Upload file' },
+                { id: 'accession', label: 'Accession'   },
+             {id: 'species', label: 'Species'}
+            ],
+            pyodide: null,
+            uploadedFiles: [],
+            uploadedAccessions: [],
+            accessionInput: '',
+            statusMessage: '',
+            statusOk: false,
+            pyodideStatus: 'loading',
+            statusTimeout: null,
+            loadingAccession: false,
+            mes: "",
+            open: true,
 
-
-  data() {
-    return {
-        open: true,
-        activeTab: 'file',
-        tabs: [
-            { id: 'file',      label: 'Upload file' },
-            { id: 'accession', label: 'Accession'   },
-            {id: 'species', label: 'Species'}
-        ],
-        pyodide: null,
-        uploadedFiles: [],
-        uploadedAccessions: [],
-        accessionInput: '',
-        statusMessage: '',
-        statusOk: false,
-        pyodideStatus: 'loading',
-        statusTimeout: null,
-        loadingAccession: false,
-        mes: "",
-
-        speciesQuery: '',
-        uploadedSpecies: [],
-        speciesAssemblies: [], 
-        speciesSelected: null,
-        loadingSpecies: false,
-        showSpeciesModal: false
-    }
-  },
-  async mounted() {
-        try {
-            this.pyodide = await getPyodide()
-            this.pyodideStatus = 'ready'
-        } catch (e) {
-            this.pyodideStatus = 'error'
-            this.pyodideError = e.message
+            speciesQuery: '',
+            uploadedSpecies: [],
+            speciesAssemblies: [], 
+            speciesSelected: null,
+            loadingSpecies: false,
+            showSpeciesModal: false
         }
     },
-  methods: {
-    async onGenomeFiles(event) {
-      if (!this.isReady) return
-      for (const file of Array.from(event.target.files)) {
-        try {
-          const path = writeToVirtualFS(this.pyodide, file.name, await readFileAsText(file))
-          const result = await this.pyodide.runPythonAsync(`
-from tfbs.genome.loader_genomes import load_from_file
-records = load_from_file(["${path}"])
-`)
-          this.uploadedFiles.push({ name: file.name, path, status: result })
-        } catch (e) {
-          this.showStatus(e.message, false)
+    watch: {
+        isRunning(newVal){
+            if(newVal === true){
+                this.open = false
+            }
         }
-      }
-      this.$emit('genome-loaded', {
-        source: 'file',
-        data: this.uploadedFiles.map(g => g.path)
-      })
     },
-
-    async onGenomeAccessions() {
-        if (!this.isReady || !this.accessionInput.trim()) return
-        this.loadingAccession = true
-        this.statusMessage = ''
-      
-        const accessions = this.accessionInput.split(',').map(a => a.trim()).filter(a => a.length) //Abans boolean
-      
-        for(const acc of accessions){
+    async mounted() {
             try {
+                this.pyodide = await getPyodide()
+                this.pyodideStatus = 'ready'
+            } catch (e) {
+                this.pyodideStatus = 'error'
+                this.pyodideError = e.message
+            }
+        },
+    methods: {
+        async onGenomeFiles(event) {
+        if (!this.isReady) return
+        for (const file of Array.from(event.target.files)) {
+            try {
+            const path = writeToVirtualFS(this.pyodide, file.name, await readFileAsText(file))
             const result = await this.pyodide.runPythonAsync(`
-                import json
-                from tfbs.genome.loader_genomes import load_from_accession
-                records = load_from_accession("${acc}")
-                
-            `);
-            this.uploadedAccessions.push({
-                acc,
-                status: result > 0 ? "ok" : "empty"
-            });
-
-            this.showStatus(result, true)
-        
-        } catch (e) {
+    from tfbs.genome.loader_genomes import load_from_file
+    records = load_from_file(["${path}"])
+    `)
+            this.uploadedFiles.push({ name: file.name, path, status: result })
+            } catch (e) {
             this.showStatus(e.message, false)
-            this.uploadedAccessions.push({
-                acc,
-                status: "error"
-            });
-        }
-
-        }
-        this.loadingAccession = false
-        this.$emit('genome-loaded', { source: 'accession', data: this.uploadedAccessions.map(a => a.acc) })
-      
-    },
-    onSpeciesConfirmed({ accessions, assemblyName }) {
-        for (const acc of accessions) {
-            if (!this.uploadedAccessions.find(a => a.acc === acc)) {
-            this.uploadedAccessions.push({ acc, status: 'ok' })
             }
         }
-        this.$emit('genome-loaded', {
-            source: 'accession',
-            data: this.uploadedAccessions.map(a => a.acc)
-        })
-        console.log(`Added ${accessions.length} sequences from ${assemblyName}`, true)
-    },
-    async searchSpecies(){
-        if(!this.speciesQuery.trim()) return
-        this.loadingSpecies = true
-        try{
-            this.speciesAssemblies = await searchAssemblies(this.speciesQuery)
-            if(!this.speciesAssemblies.length){
-                this.showStatus(`No reference assemblies found for "${this.speciesQuery}"`, false)
-                return
-            }
-            this.showSpeciesModal = true //obre menu de resultats
-        } catch(e){
-            this.showStatus(e.message, false)
-        } finally {
-            this.loadingSpecies = false
-        }
-    },
-    async confirmSpecies(assembly){
-        this.loadingSpecies = true
-        try{
-            const sequences = await getSequenceReports(assembly.accession)
-            const accessions = sequences.map(s => s.accession).filter(Boolean)
-
-            console.log(accessions)
-            // console.log("accessions", accessions)
-            // for (const acc of accessions) {
-            //     console.log("dins del bucle")
-            //     this.uploadedSpecies.push({acc, status:'ok'})
-            // }
-            this.uploadedSpecies.push({
-                assemblyAccession: assembly.accession,
-                assemblyName: assembly.assemblyName,
-                organismName: assembly.organismName,
-                accessions,
-                count: accessions.length
-            })
-
-            console.log(this.uploadedSpecies)
-            this.$emit('genome-loaded', {
-                source: 'accession',
-                data: this.uploadedSpecies.flatMap(a => a.accessions)
-            })
-            this.showStatus(`${accessions.length} sequences loaded from ${assembly.assemblyName}`)
-            this.closeSpeciesModal()  
-            this.activeTab = 'species'
-        } catch (e) {
-            this.showStatus(e.message, false)
-        } finally {
-            this.loadingSpecies = false
-        }
-
-    },
-    closeSpeciesModal() {
-        this.showSpeciesModal  = false
-        this.speciesAssemblies = []
-        this.speciesSelected   = null
-    },
-
-    removeFile(index) {
-        if (!this.isReady) {
-            this.showStatus("Pyodide is still loading", false)
-            return
-        }
-
-        try {
-            this.pyodide.FS.unlink(this.uploadedFiles[index].path)
-        } catch (e) {
-            console.warn("FS unlink error:", e)
-        }
-
-        this.uploadedFiles.splice(index, 1)
-
         this.$emit('genome-loaded', {
             source: 'file',
             data: this.uploadedFiles.map(g => g.path)
         })
-    },
+        },
 
-    removeAccession(index){
-        this.uploadedAccessions.splice(index, 1)
-        this.$emit('genome-loaded', {
-            source: 'accession',
-            data: this.uploadedAccessions.map(a => a.acc)
-        })
-    }, 
-    removeSpecies(index) {
-        this.uploadedSpecies.splice(index, 1)
-        this.$emit('genome-loaded', {
-            source: 'accession',
-            data: this.uploadedSpecies.flatMap(s => s.accessions)
-        })
-    },
-    changeTabs(tabId){
-
-        // if (this.activeTab !== tabId && this.uploadedAccessions.length > 0 || this.uploadedFiles.length > 0 || this.uploadedSpecies.length > 0){
-        //     this.showStatus('Remove loaded accessions before using file upload mode.', false)
-        //     return
-        // }
-        // this.activeTab = tabId
-        let mes = 'genome'
-        if (this.activeTab === 'accession'){
-            mes = 'loaded accessions'
-        } else if (this.activeTab === 'file') {
-            mes = 'uploaded genome files'
-        } else {
-            mes = 'loaded species'
-        }
-
-        if( tabId === 'accession' && (this.uploadedFiles.length > 0 || this.uploadedSpecies.length > 0)){
-            this.showStatus(`Remove ${mes} before using accession mode.`, false)
-            return
-        } else if (tabId === 'file' && (this.uploadedAccessions.length > 0 || this.uploadedSpecies.length > 0)){
-            this.showStatus(`Remove ${mes} before using file upload mode.`, false)
-            return
-        } else if (tabId === 'species' && (this.uploadedAccessions.length> 0 || this.uploadedFiles.length > 0)){
-            this.showStatus(`Remove ${mes} before using file upload mode`, false)
-            return
-        }
-        this.activeTab = tabId
-    },
-    showStatus(message, ok = true){
-        this.statusMessage=message
-        this.statusOk = ok;
-
-        clearTimeout(this.statusTimeout)
-        this.statusTimeout = setTimeout(() => {
+        async onGenomeAccessions() {
+            if (!this.isReady || !this.accessionInput.trim()) return
+            this.loadingAccession = true
             this.statusMessage = ''
-        }, 3000)
-    }
-  }, 
-  computed: {
+        
+            const accessions = this.accessionInput.split(',').map(a => a.trim()).filter(a => a.length) //Abans boolean
+        
+            for(const acc of accessions){
+                try {
+                const result = await this.pyodide.runPythonAsync(`
+                    import json
+                    from tfbs.genome.loader_genomes import load_from_accession
+                    records = load_from_accession("${acc}")
+                    
+                `);
+                this.uploadedAccessions.push({
+                    acc,
+                    status: result > 0 ? "ok" : "empty"
+                });
+
+                this.showStatus(result, true)
+            
+            } catch (e) {
+                this.showStatus(e.message, false)
+                this.uploadedAccessions.push({
+                    acc,
+                    status: "error"
+                });
+            }
+
+            }
+            this.loadingAccession = false
+            this.$emit('genome-loaded', { source: 'accession', data: this.uploadedAccessions.map(a => a.acc) })
+        
+        },
+        onSpeciesConfirmed({ accessions, assemblyName }) {
+            for (const acc of accessions) {
+                if (!this.uploadedAccessions.find(a => a.acc === acc)) {
+                this.uploadedAccessions.push({ acc, status: 'ok' })
+                }
+            }
+            this.$emit('genome-loaded', {
+                source: 'accession',
+                data: this.uploadedAccessions.map(a => a.acc)
+            })
+            console.log(`Added ${accessions.length} sequences from ${assemblyName}`, true)
+        },
+        async searchSpecies(){
+            if(!this.speciesQuery.trim()) return
+            this.loadingSpecies = true
+            try{
+                this.speciesAssemblies = await searchAssemblies(this.speciesQuery)
+                if(!this.speciesAssemblies.length){
+                    this.showStatus(`No reference assemblies found for "${this.speciesQuery}"`, false)
+                    return
+                }
+                this.showSpeciesModal = true //obre menu de resultats
+            } catch(e){
+                this.showStatus(e.message, false)
+            } finally {
+                this.loadingSpecies = false
+            }
+        },
+        async confirmSpecies(assembly){
+            this.loadingSpecies = true
+            try{
+                const sequences = await getSequenceReports(assembly.accession)
+                const accessions = sequences.map(s => s.accession).filter(Boolean)
+
+                console.log(accessions)
+                // console.log("accessions", accessions)
+                // for (const acc of accessions) {
+                //     console.log("dins del bucle")
+                //     this.uploadedSpecies.push({acc, status:'ok'})
+                // }
+                this.uploadedSpecies.push({
+                    assemblyAccession: assembly.accession,
+                    assemblyName: assembly.assemblyName,
+                    organismName: assembly.organismName,
+                    accessions,
+                    count: accessions.length
+                })
+
+                console.log(this.uploadedSpecies)
+                this.$emit('genome-loaded', {
+                    source: 'accession',
+                    data: this.uploadedSpecies.flatMap(a => a.accessions)
+                })
+                this.showStatus(`${accessions.length} sequences loaded from ${assembly.assemblyName}`)
+                this.closeSpeciesModal()  
+                this.activeTab = 'species'
+            } catch (e) {
+                this.showStatus(e.message, false)
+            } finally {
+                this.loadingSpecies = false
+            }
+
+        },
+        closeSpeciesModal() {
+            this.showSpeciesModal  = false
+            this.speciesAssemblies = []
+            this.speciesSelected   = null
+        },
+        toggle(){
+            if(!this.isRunning) {
+                this.open = !this.open
+            }
+        },
+        removeFile(index) {
+            if (!this.isReady) {
+                this.showStatus("Pyodide is still loading", false)
+                return
+            }
+
+            try {
+                this.pyodide.FS.unlink(this.uploadedFiles[index].path)
+            } catch (e) {
+                console.warn("FS unlink error:", e)
+            }
+
+            this.uploadedFiles.splice(index, 1)
+
+            this.$emit('genome-loaded', {
+                source: 'file',
+                data: this.uploadedFiles.map(g => g.path)
+            })
+        },
+
+        removeAccession(index){
+            this.uploadedAccessions.splice(index, 1)
+            this.$emit('genome-loaded', {
+                source: 'accession',
+                data: this.uploadedAccessions.map(a => a.acc)
+            })
+        }, 
+        removeSpecies(index) {
+            this.uploadedSpecies.splice(index, 1)
+            this.$emit('genome-loaded', {
+                source: 'accession',
+                data: this.uploadedSpecies.flatMap(s => s.accessions)
+            })
+        },
+        changeTabs(tabId){
+
+            // if (this.activeTab !== tabId && this.uploadedAccessions.length > 0 || this.uploadedFiles.length > 0 || this.uploadedSpecies.length > 0){
+            //     this.showStatus('Remove loaded accessions before using file upload mode.', false)
+            //     return
+            // }
+            // this.activeTab = tabId
+            let mes = 'genome'
+            if (this.activeTab === 'accession'){
+                mes = 'loaded accessions'
+            } else if (this.activeTab === 'file') {
+                mes = 'uploaded genome files'
+            } else {
+                mes = 'loaded species'
+            }
+
+            if( tabId === 'accession' && (this.uploadedFiles.length > 0 || this.uploadedSpecies.length > 0)){
+                this.showStatus(`Remove ${mes} before using accession mode.`, false)
+                return
+            } else if (tabId === 'file' && (this.uploadedAccessions.length > 0 || this.uploadedSpecies.length > 0)){
+                this.showStatus(`Remove ${mes} before using file upload mode.`, false)
+                return
+            } else if (tabId === 'species' && (this.uploadedAccessions.length> 0 || this.uploadedFiles.length > 0)){
+                this.showStatus(`Remove ${mes} before using file upload mode`, false)
+                return
+            }
+            this.activeTab = tabId
+        },
+        showStatus(message, ok = true){
+            this.statusMessage=message
+            this.statusOk = ok;
+
+            clearTimeout(this.statusTimeout)
+            this.statusTimeout = setTimeout(() => {
+                this.statusMessage = ''
+            }, 3000)
+        }
+    }, 
+    computed: {
         isReady(){
             return this.pyodideStatus == 'ready'
         }, 

@@ -12,7 +12,7 @@ def compute_threshold(motif, threshold_value=0.1, threshold_method="direct",  pr
     """
     if threshold_method is None:
         raise ValueError("Threshold method must be specified")
-    if threshold_value is None:
+    if (threshold_value is None and threshold_method != "patser"):
         raise ValueError("Threshold value must be specified")
     
     if threshold_method == "direct":

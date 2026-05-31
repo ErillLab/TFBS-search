@@ -71,6 +71,8 @@ export default{
                         .map(item => `${item.locus_tag}:${item.distance}`)
                         .join("|");
                     return `"${text}"`;
+                } else {
+                    text = String(value);
                 }
                 return `"${String(value)}"`;
             }
