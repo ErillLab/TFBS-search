@@ -82,7 +82,7 @@
                 </div>
                 <p class="input-hint">Multiple accessions separated by commas</p>
             </div>
-            <div v-if="uploadedAccessions.length" class="file-list">
+            <div v-if="uploadedAccessions.length " class="file-list">
                 <div v-for="(item, index) in uploadedAccessions" :key="item.acc" class="file-item">
                     <span class="file-item-name">
                     <i class="ti ti-database"></i>
@@ -125,18 +125,40 @@
             </div>
 
             <div v-if="uploadedSpecies.length" class="file-list">
-                <div v-for="(item, index) in uploadedSpecies" :key="item.assemblyAccession" class="file-item">
-                    <span class="file-item-name">
-                        <i class="ti ti-dna"></i>
-                        <span> {{ item.organismName }}</span>
-                        <span style="font-size: 11px; color: var(--color--text-secondary); margin-left: 4px;">
-                            {{ item.assemblyAccession }} · {{ item.count }} sequences
+                <div v-for="(item, index) in uploadedSpecies" :key="item.assemblyAccession">
+                    <div class="file-item">        
+                        <span class="file-item-name">
+                            <i class="ti ti-dna"></i>
+                            <span> {{ item.organismName }}</span>
+                            <span style="font-size: 11px; color: var(--color--text-secondary); margin-left: 4px;">
+                                {{ item.assemblyAccession }} · {{ item.count }} sequences
+                            </span>
                         </span>
-                    </span>
-                    <button class="btn btn-ghost" @click="removeSpecies(index)" aria-label="Remove">
-                        <i class="ti ti-x"></i>
-                    </button>
+                        <div style="display:flex; gap: 4px; align-items:center;">
+                             <button 
+                                class="btn btn-ghost" 
+                                @click="expandedSpecies[item.assemblyAccession] = !expandedSpecies[item.assemblyAccession]"
+                                :title="expandedSpecies[item.assemblyAccession] ? 'Hide sequences' : 'Show sequences'"
+                            >
+                                <i class="ti" :class="expandedSpecies[item.assemblyAccession] ? 'ti-chevron-up' : 'ti-chevron-down'"></i>
+                            </button>
+                            <button class="btn btn-ghost" @click="removeSpecies(index)" aria-label="Remove">
+                                <i class="ti ti-x"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div v-if="expandedSpecies[item.assemblyAccession]" class="accession-sublist">
+                        <div 
+                            v-for="acc in item.accessions" 
+                            :key="acc" 
+                            class="accession-subitem"
+                        >
+                            <i class="ti ti-dna-off" style="font-size:11px; color: var(--color--text-secondary)"></i>
+                            <span>{{ acc }}</span>
+                        </div>
+                    </div>
                 </div>
+                    
             </div>
         </div>
 
@@ -255,6 +277,7 @@ export default {
             loadingAccession: false,
             mes: "",
             open: true,
+            expandedSpecies:{},
 
             speciesQuery: '',
             uploadedSpecies: [],
@@ -292,7 +315,7 @@ export default {
     `)
             this.uploadedFiles.push({ name: file.name, path, status: result })
             } catch (e) {
-            this.showStatus(e.message, false)
+                this.showStatus(this.classifyGenomeError(e), false)
             }
         }
         this.$emit('genome-loaded', {
@@ -314,14 +337,28 @@ export default {
                     import json
                     from tfbs.genome.loader_genomes import load_from_accession
                     records = load_from_accession("${acc}")
+                    records
                     
                 `);
-                this.uploadedAccessions.push({
-                    acc,
-                    status: result > 0 ? "ok" : "empty"
-                });
+                const records = result.toJs ? result.toJs() : result
+                console.log(records)
+                const isEmpty = !records || (Array.isArray(records) && records.length === 0)
+                console.log("isEmpty", isEmpty)
 
-                this.showStatus(result, true)
+                if (isEmpty) {
+                    this.showStatus(`Accession "${acc}" is not valid or no data found`, false)
+                    // this.uploadedAccessions.push({ acc, status: "error" })
+                    console.log("dins de l'if")
+                } else {
+                    this.uploadedAccessions.push({ acc, status: "ok" })
+                    this.showStatus(`Accession "${acc}" loaded successfully`, true) //no se si deixar-ho !!
+                }
+                // this.uploadedAccessions.push({
+                //     acc,
+                //     status: result > 0 ? "ok" : "empty"
+                // });
+
+                // this.showStatus(result, true)
             
             } catch (e) {
                 this.showStatus(e.message, false)
@@ -365,6 +402,7 @@ export default {
             }
         },
         async confirmSpecies(assembly){
+            this.expandedSpecies[assembly.accession] = false
             this.loadingSpecies = true
             try{
                 const sequences = await getSequenceReports(assembly.accession)
@@ -384,18 +422,19 @@ export default {
                     count: accessions.length
                 })
 
+                // this.$set(this.expandedSpecies, assembly.accession, false) 
                 console.log(this.uploadedSpecies)
                 this.$emit('genome-loaded', {
                     source: 'accession',
                     data: this.uploadedSpecies.flatMap(a => a.accessions)
                 })
                 this.showStatus(`${accessions.length} sequences loaded from ${assembly.assemblyName}`)
-                this.closeSpeciesModal()  
                 this.activeTab = 'species'
             } catch (e) {
                 this.showStatus(e.message, false)
             } finally {
                 this.loadingSpecies = false
+                this.closeSpeciesModal()  
             }
 
         },
@@ -479,6 +518,17 @@ export default {
             this.statusTimeout = setTimeout(() => {
                 this.statusMessage = ''
             }, 3000)
+        },
+        classifyGenomeError(e){
+            if (e.message.includes("No records founds")) {
+                return "No genome found for the provided accession number(s). Please check the accession(s) and try again."
+            } else if (e.message.includes("Failed to fetch genome data")) {
+                return "Network error while fetching genome data. Please check your connection and try again."
+            } else if (e.message.includes("Unsupported file format")) {
+                return "The uploaded file is not in a supported format. Please upload a valid GenBank file."
+            } else {
+                return e.message
+            }
         }
     }, 
     computed: {
@@ -507,5 +557,23 @@ export default {
 @keyframes spin {
   from { transform: rotate(0deg); }
   to   { transform: rotate(360deg); }
+}
+
+.accession-sublist {
+    margin: 0 0 6px 16px;
+    padding: 6px 10px;
+    border-left: 2px solid var(--color--border, #e2e8f0);
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.accession-subitem {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: var(--color--text-secondary);
+    padding: 2px 0;
 }
 </style>

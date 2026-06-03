@@ -236,7 +236,7 @@ export default{
                 this.$emit("motif-loaded", path)
             }
             catch(e){
-                this.showStatus(e.message, false);         //S'hauria de posar un missatge amb els formats    
+                this.showStatus(this.classifyMotifError(e), false);         //S'hauria de posar un missatge amb els formats    
             }
         }, 
         //Text
@@ -307,6 +307,13 @@ motif = Motif.load_motif("${path}")
                 this.open = !this.open
             }
         },
+        classifyMotifError(e){
+            if (e.message.includes("Unsupported file format")) {
+                return "The uploaded file is not in a supported format. Please upload a valid motif file."
+            } else {
+                return e.message
+            }
+        }
     },
     computed: {
         isReady(){
