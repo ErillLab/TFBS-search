@@ -1,59 +1,4 @@
-<!-- <script>
-  import {Grid} from 'gridjs'
 
-    export default {
-        name: "ResultsTable",
-        props: {
-            hits: {
-                type: Array,
-                required: true
-            }
-        },
-        mounted(){
-            if(!this.hits || this.hits.length === 0) return;
-            const columns = 
-            [
-                "Site ID",
-                "Chromid Id",
-                "Site Score",
-                "Site Start",
-                "Site End",
-                "Site Strand",
-                "Site Mode",
-                "Relative Distance",
-                "Gene locus tag",
-                "Gene Name",
-                "Protein Id",
-                "Gene Start",
-                "Gene End",
-                "Gene Strand",
-                "Gene Product",
-                "Operon"
-            ];
-            const rows = this.hits.map (hit => columns.map(col => hit[col]));
-            new Grid({
-                columns,
-                data: rows,
-                pagination: {
-                    limit: 10
-                },
-                sort: true,
-                search: true,
-                resizable: true,
-                theme: 'mermaid'
-            }).render(this.$refs.grid);
-
-        },
-        components: {
-            Grid
-        },
-    }
-
-</script>
-
-<template>
-  <div ref="grid"></div>
-</template> -->
 
 <template>
   <div class="panel results-panel">
@@ -122,9 +67,11 @@ export default {
         if (!op) return ""
 
         if (Array.isArray(op)) {
-            return op.map(g =>
-            `${g.locus_tag} (${g.distance})`
-            ).join(" | ")
+           return op
+            
+            .map(g => `${g.locus_tag} (${g.distance})`)
+            .join(" | ")
+
         }
 
         return String(op)
@@ -164,6 +111,7 @@ export default {
             search: 'tfbs-grid-search',
             paginationButton: 'tfbs-grid-page-btn',
             paginationButtonCurrent: 'tfbs-grid-page-btn current',
+            
         }
         })
 
@@ -195,7 +143,9 @@ export default {
 }
 
 .tfbs-grid-table {
-  width: 100% !important;
+  /* width: 100% !important; */
+  /* width: max-content !important; */
+  min-width: 100%;
   border-collapse: collapse !important;
   border: none !important;
 }
@@ -204,6 +154,11 @@ export default {
   background: var(--c-bg) !important;
   border-bottom: 1.5px solid var(--c-border) !important;
 }
+
+.tfbs-grid-th,
+.tfbs-grid-td {
+  text-align: center;
+  vertical-align: middle;}
 
 .tfbs-grid-th {
   font-size: 0.72rem !important;
@@ -215,6 +170,7 @@ export default {
   background: var(--c-bg) !important;
   border: none !important;
   white-space: nowrap !important;
+  text-align: center !important;
 }
 
 .tfbs-grid-td {
@@ -224,6 +180,11 @@ export default {
   color: var(--c-text) !important;
   font-family: var(--mono) !important;
   font-size: 0.78rem !important;
+  white-space: nowrap !important;
+  max-width: 300px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: center !important;
 }
 
 tr:hover .tfbs-grid-td {

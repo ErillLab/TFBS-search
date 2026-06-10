@@ -4,7 +4,6 @@
         <div class="panel-header" @click="toggle">
         <div class="panel-header-left">
             <div class="panel-icon">
-                <!-- <i class="ti ti-timeline-event" aria-hidden="true"></i> -->
                  <i class="ti ti-grid-3x3" aria-hidden="true"></i>
             </div>
             <span class="panel-title">Motif</span>
@@ -44,19 +43,13 @@
                     hidden
                 />        
             </div>
+            <MotifFileResult
+          v-if="loadedFileName"
+          :file-name="loadedFileName"
+          :sequences="loadedSequences"
+          @clear="clearMotif"
+        />
 
-             <div v-if="loadedFileName" class="file-list">
-                <div class="file-item">
-                    <span class="file-item-name">
-                        <i class="ti ti-file" aria-hidden="true"></i>
-                        {{ loadedFileName }}
-                        <!-- <span class="file-item-status"> {{ genome.status }}</span> -->
-                    </span>
-                    <button class="btn btn-ghost" @click="clearMotif()" aria-label="Remove">
-                        <i class="ti ti-x" aria-hidden="true"></i>
-                    </button>
-                </div>
-            </div>
         </div>
 
         <!-- Tab: Paste sequence -->
@@ -75,28 +68,16 @@
             :disabled="!isReady || !motifText.trim()"
             @click="onMotifText"
             >Load sequences</button>
-            <div v-if="loadedFileName" class="file-list">
-                <div class="file-item">
-                    <span class="file-item-name">
-                        <i class="ti ti-file" aria-hidden="true"></i>
-                        {{ loadedFileName }}
-                        <!-- <span class="file-item-status"> {{ genome.status }}</span> -->
-                    </span>
-                    <button class="btn btn-ghost" @click="clearMotif()" aria-label="Remove">
-                        <i class="ti ti-x" aria-hidden="true"></i>
-                    </button>
-                </div>
-            </div>
+            <MotifFileResult
+                v-if="loadedFileName"
+                :file-name="loadedFileName"
+                :sequences="loadedSequences"
+                @clear="clearMotif"
+            />
+
          </div>
 
-        <!-- Status / Error -->
-        <!-- <div v-if="statusMessage" class="status-toast" :class="statusOk ? 'ok' : 'error'">
-        <i class="ti" :class="statusOk ? 'ti-circle-check' : 'ti-alert-circle'" aria-hidden="true"></i>
-        <span>{{ statusMessage }}</span>
-        <button class="toast-close" @click="statusMessage = ''" aria-label="Dismiss">
-            <i class="ti ti-x" aria-hidden="true"></i>
-        </button>
-        </div> -->
+
         <transition name="toast">
         <div
             v-if="statusMessage"
@@ -124,57 +105,13 @@
    
 </template>
 
-
-
-
-<!-- <template>
-  <div class="section-block">
-
-    <h2>Motif Upload</h2>
-
-
-    <div class="upload-block">
-      <label class="label">FASTA, TXT or JASPAR file:</label>
-      <input 
-        type="file" 
-        accept=".fasta,.fa,.txt,.jaspar"
-        @change="e => onMotifFile(e, 'fasta')"
-        class="input-file"
-      />
-    </div>
-
-    <div class="upload-block">
-      <label class="label">Or paste sequences directly (one per line):</label>
-    
-      <textarea
-        id="text_motif"
-        v-model="motifText"
-        rows="5"
-        class="input-textarea"
-        placeholder="ACGTACGT&#10;TTGTACGT&#10;ACGTACGT"
-      ></textarea>
-
-      <button 
-        type="button"
-        class="action-btn"
-        @click="onMotifText"
-        :disabled="!isReady"
-      >
-        Test Motif Text
-      </button>
-    </div>
-
-    <pre v-if="statusMessage" :style="{ color: statusOk ? 'green' : 'red' }">
-{{ statusMessage }}</pre>
-
-  </div>
-</template> -->
-
 <script>
 import { writeToVirtualFS, readFileAsText } from '@/services/tfbsService';
 import { getPyodide } from '@/services/pyodide';
+import MotifFileResult from './MotifFileResult.vue';
 export default{
     name: "MotifUploader",
+    components: {MotifFileResult},
     emits: ['motif-loaded'],
     props: {
         isRunning: Boolean
@@ -189,12 +126,18 @@ export default{
             ],
             statusMessage: "",
             statusOk: false,
+
             pyodideStatus: 'loading',
             pyodideError: '',
             pyodide: null,
+
             motifText: "",
             loadedFileName: null,
-            open: true,
+            
+            loadedSequences: [],
+            showSequenceList: false,
+
+          
         };
     },
     watch: {
@@ -217,26 +160,39 @@ export default{
         async onMotifFile(event){
             this.showStatus("", false);
  
-              this.motifResult = null
+            this.motifResult = null
             if (!this.isReady) return
 
             const file = event.target.files[0]
             if (!file) return
+
             try{
                 const content = await readFileAsText(file)
                 const path = writeToVirtualFS(this.pyodide, file.name, content)
 
                 const result = await this.pyodide.runPythonAsync(`
-                from tfbs.motif.loader_motifs import load_motif
-                motif = load_motif("${path}")
-               
+from tfbs.motif.loader_motifs import load_motif
+motif = load_motif("${path}")
+
                 `)
-                this.showStatus(result, true);
+                let seqs = [];
+
+                if (file.name.endsWith(".fa") || file.name.endsWith(".fasta") || file.name.endsWith(".jaspar")) {
+                    seqs = this.parserMotif(content);
+                } else {
+                    seqs = content.split("\n").map(s => s.trim()).filter(Boolean);
+                }
+
+                this.loadedSequences = seqs;
+
+
+                
                 this.loadedFileName = file.name;
                 this.$emit("motif-loaded", path)
+
             }
             catch(e){
-                this.showStatus(this.classifyMotifError(e), false);         //S'hauria de posar un missatge amb els formats    
+                this.showStatus(this.classifyMotifError(e), false);         
             }
         }, 
         //Text
@@ -263,7 +219,7 @@ export default{
                         throw new Error(`Invalid sequence ${seq}. All sequences must be the same length and only the ATGC characters are allowed. `)
                     }
                 }
-
+                
                 const filename = "motif_from_text.txt"
                 const path = writeToVirtualFS(this.pyodide, filename, sequences)
                 console.log(typeof(path), path)
@@ -273,16 +229,23 @@ from tfbs.motif.motif import Motif
 motif = Motif.load_motif("${path}")
 
 `)
-
-                this.showStatus(result, true);          
+                this.loadedSequences = sequences
                 this.loadedFileName = filename;
-                this.$emit("motif-loaded", path)
+                this.$emit("motif-loaded", path);
+
+
             } catch (e) {
                 this.showStatus(e.message, false);          
             }
         },
+        parserMotif(text){
+            return text.split("\n").map(s => s.trim()).filter(s => s && !s.startsWith(">"));
+        },
+        
         clearMotif(){
-            this.loadedFileName = null
+            this.loadedSequences = [];
+            this.showSequenceList = false;
+            this.loadedFileName = null;
             this.showStatus("", false);          
             this.$emit("motif-loaded", null)
         },

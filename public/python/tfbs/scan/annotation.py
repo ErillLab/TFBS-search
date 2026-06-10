@@ -155,6 +155,34 @@ def find_candidate_genes(site, genes_sequence,
     
     return [c for c in [best_forward, best_reverse] if c is not None]
 
+
+def compute_operon_intergenic_distance(genome, factor=1.0):
+    """
+    Compute a dynamic intergenic distance threshold for operon inference based on genome statistics.
+
+    Parameters:
+        genome : Genome --> Genome object containing chromids and features.
+        factor : float --> Multiplier for the median intergenic distance to set the threshold.
+    """
+    distances = []
+    for chromid in genome.chromids: 
+        genes = features_to_genes(chromid.features)
+        genes_seq = sorted(genes, key=lambda x: x["start"])
+        
+        for i in range(len(genes_seq)-1):
+            gene1 = genes_seq[i]
+            gene2 = genes_seq[i+1]
+            if gene1["strand"] != gene2["strand"]:
+                dist = gene2["start"] - gene1["end"]
+                if dist > 0:
+                    distances.append(dist)
+    if not distances: 
+        logger.warning("No intergenic distances found for operon inference. Using default threshold of 100.")
+        return 100.0
+    mean_distance = sum(distances) / len(distances)
+    return mean_distance * factor
+
+
 def infer_operon(gene, genes_sequence, max_distance=100):
     """
     Infer operon membership by scanning adjacent genes on the same strand.
@@ -167,11 +195,11 @@ def infer_operon(gene, genes_sequence, max_distance=100):
     Returns:
         list --> List of locus tags belonging to the inferred operon.
     """
-    # operon = [gene["locus_tag"]]
-    operon = [{
-        "locus_tag": gene["locus_tag"],
-        "distance": 0
-    }]
+    operon = []
+    # operon = [{
+    #     "locus_tag": gene["locus_tag"],
+    #     "distance": 0
+    # }]
     current_boundry = gene["end"] if gene["strand"] == 1 else gene["start"]
     index_gene = genes_sequence.index(gene)
     if gene["strand"] == 1:
@@ -263,7 +291,8 @@ def annotate_hit(site, genes_sequence, margin_downstream=50, margin_upstream=250
         if inter_operons:
             entry["Operon"] = infer_operon(gene, genes_sequence, max_distance=max_distance_operon)
         else:
-            entry["Operon"] = [gene["locus_tag"]]
+            # entry["Operon"] = [gene["locus_tag"]]
+            entry["Operon"] = ""
         
        
             

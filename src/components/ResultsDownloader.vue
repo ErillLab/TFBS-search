@@ -68,11 +68,12 @@ export default{
             if (key === "Operon") {
                 if (Array.isArray(value)) {
                     const text = value
-                        .map(item => `${item.locus_tag}:${item.distance}`)
+                        .map(item =>  `${item.locus_tag}:${item.distance}`)
+                        .filter(Boolean)
                         .join("|");
                     return `"${text}"`;
-                } else {
-                    text = String(value);
+                // } else {
+                //     text = String(value);
                 }
                 return `"${String(value)}"`;
             }

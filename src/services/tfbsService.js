@@ -30,36 +30,79 @@ export async function readFileAsText(file){
     })
 }
 
-export async function runTfbsPipeline({
+// export async function runTfbsPipeline({
+//   genomeSource,
+//   genomeData,
+//   motifPath,
+//   params,
+// }) {
+//   const pyodide = await getTfbsPyodide();
+  
+
+//   // Write files to virtual FS
+// //   const genomePath = await writeToVirtualFS(pyodide, genomeFilename, genomeContent);
+// //   const motifPath = await writeToVirtualFS(pyodide, motifFilename, motifContent);
+
+//   // Convert params to JSON
+//   const paramsJson = JSON.stringify(params);;
+
+// let genomeArg;
+// if (genomeSource === "file") {
+//   const filesJson = JSON.stringify(Array.isArray(genomeData) ? genomeData : [genomeData]);
+//   genomeArg = `genome_files=${filesJson}`;
+// } else if (genomeSource === "accession") {
+//   const accessionsJson = JSON.stringify(Array.isArray(genomeData) ? genomeData : [genomeData]);
+//   genomeArg = `genome_accession=${accessionsJson}`;
+// } else {
+//   throw new Error("Genome Source desconegut");
+// }
+//   const resultJson = await pyodide.runPythonAsync(`
+// import json
+
+// from tfbs.update_pipeline import update_pipeline
+// params = json.loads("""${paramsJson}""")
+
+// res = update_pipeline(
+//     ${genomeArg},
+//     motif_file="${motifPath}",
+//     params=params
+// )
+
+// json.dumps(res, default=str)
+//   `);
+//     console.log(resultJson)
+//   // Convert Python JSON → JS object
+//   return JSON.parse(resultJson);
+// }
+export function runTfbsPipeline({
   genomeSource,
   genomeData,
   motifPath,
   params,
 }) {
-  const pyodide = await getTfbsPyodide();
-  
+  return getTfbsPyodide().then((pyodide) => {
+    const paramsJson = JSON.stringify(params);
 
-  // Write files to virtual FS
-//   const genomePath = await writeToVirtualFS(pyodide, genomeFilename, genomeContent);
-//   const motifPath = await writeToVirtualFS(pyodide, motifFilename, motifContent);
+    let genomeArg;
 
-  // Convert params to JSON
-  const paramsJson = JSON.stringify(params);;
+    if (genomeSource === "file") {
+      const filesJson = JSON.stringify(
+        Array.isArray(genomeData) ? genomeData : [genomeData]
+      );
+      genomeArg = `genome_files=${filesJson}`;
+    } else if (genomeSource === "accession") {
+      const accessionsJson = JSON.stringify(
+        Array.isArray(genomeData) ? genomeData : [genomeData]
+      );
+      genomeArg = `genome_accession=${accessionsJson}`;
+    } else {
+      throw new Error("Genome Source desconegut");
+    }
 
-let genomeArg;
-if (genomeSource === "file") {
-  const filesJson = JSON.stringify(Array.isArray(genomeData) ? genomeData : [genomeData]);
-  genomeArg = `genome_files=${filesJson}`;
-} else if (genomeSource === "accession") {
-  const accessionsJson = JSON.stringify(Array.isArray(genomeData) ? genomeData : [genomeData]);
-  genomeArg = `genome_accession=${accessionsJson}`;
-} else {
-  throw new Error("Genome Source desconegut");
-}
-  const resultJson = await pyodide.runPythonAsync(`
+    const pythonCode = `
 import json
-
 from tfbs.update_pipeline import update_pipeline
+
 params = json.loads("""${paramsJson}""")
 
 res = update_pipeline(
@@ -69,8 +112,12 @@ res = update_pipeline(
 )
 
 json.dumps(res, default=str)
-  `);
-    console.log(resultJson)
-  // Convert Python JSON → JS object
-  return JSON.parse(resultJson);
+    `;
+
+    return pyodide.runPythonAsync(pythonCode)
+      .then((resultJson) => {
+        console.log(resultJson);
+        return JSON.parse(resultJson);
+      });
+  });
 }

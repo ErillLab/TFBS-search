@@ -217,7 +217,7 @@
                             </div>
                             <p class="modal-item-meta">
                                 {{ a.assemblyName }} · {{ a.submitter }} ·
-                                {{ a.releaseDate }} · {{ a.chromosomeCount }} chr
+                                {{ a.releaseDate }} · {{ a.chromosomeCount }} seqs
                             </p>
                         </div>
                     </div>
