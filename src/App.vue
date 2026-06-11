@@ -36,6 +36,7 @@ export default{
       MotifUploaderKey: 0,
       paramsKey: 0,
       isRunning: false,
+      computedOperonDistance: null,
     }
   }, 
   computed: {
@@ -99,14 +100,16 @@ export default{
       <ParamsConfig
         :key="paramsKey"
         :is-running="isRunning"
+        :computedOperonDistance="computedOperonDistance"
         @config-params="params = $event"
       />
 
       <PipelineRunner
-        v-if="genomePath && motifPath"
+
         :genome="genomePath"
         :motif="motifPath"
         :params="params"
+        @operon-distance-computed="computedOperonDistance = $event"
         @pipeline-start="isRunning = $event"
         @pipeline-finished="result = $event"
         @reset-all="resetAll"

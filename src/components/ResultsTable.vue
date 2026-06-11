@@ -144,8 +144,8 @@ export default {
 
 .tfbs-grid-table {
   /* width: 100% !important; */
-  /* width: max-content !important; */
-  min-width: 100%;
+  width: max-content !important;
+  min-width: 100% !important;
   border-collapse: collapse !important;
   border: none !important;
 }
@@ -171,6 +171,7 @@ export default {
   border: none !important;
   white-space: nowrap !important;
   text-align: center !important;
+
 }
 
 .tfbs-grid-td {

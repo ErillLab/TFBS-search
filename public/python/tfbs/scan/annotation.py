@@ -174,7 +174,7 @@ def compute_operon_intergenic_distance(genome, factor=1.0):
             gene2 = genes_seq[i+1]
             if gene1["strand"] != gene2["strand"]:
                 dist = gene2["start"] - gene1["end"]
-                if dist > 0:
+                if dist >= 0:
                     distances.append(dist)
     if not distances: 
         logger.warning("No intergenic distances found for operon inference. Using default threshold of 100.")

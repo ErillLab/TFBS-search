@@ -3,7 +3,8 @@ export default{
     name: "ParamsConfig", 
     emits: ["config-params"],
     props: {
-        isRunning: Boolean
+        isRunning: Boolean,
+        computedOperonDistance: {type: Number, default: null}
     },
     data() {
         return{
@@ -22,6 +23,10 @@ export default{
           max_distance_operon: 100,
           doubleReport: true,
           open: true, 
+
+          autoOperonDistance: false,
+          operonDistanceFactor: 1.0,
+          factorOptions: [0.5, 0.75, 1, 1.5, 2, 3],
         }
     },
     computed:{
@@ -38,6 +43,9 @@ export default{
           else if (this.thresholdMethod === 'balanced') return 'Balanced point between FPR and FNR (0-1).'
           return 'Miminum raw score to report a hit.'
         }, 
+        operonModeHint(){
+          if(this.autoOperonDistance) return ''
+        },
         rangeBarStyle() {
           const totalLeft = 500
           const totalRight = 200
@@ -77,14 +85,18 @@ export default{
 
       },
       pseudocount: "emitParams",
-      thresholdValue: "emitParams",
+      // thresholdValue: "emitParams",
       background: "emitParams",
       integration_log: "emitParams",
       marginUpstream: "emitParams",
       marginDownstream: "emitParams",
       inferOperons: "emitParams",
       max_distance_operon: "emitParams",
-      doubleReport: "emitParams"
+      doubleReport: "emitParams",
+      autoOperonDistance: "emitParams",
+      operonDistanceFactor: "emitParams",
+      computedOperonDistance: "emitParams"
+
     },
     mounted() {
         this.emitParams();
@@ -118,7 +130,10 @@ export default{
             margin_downstream: this.marginDownstream,
             infer_operons: this.inferOperons,
             max_distance_operon: this.inferOperons ? this.max_distance_operon : null,
-            double_report: this.doubleReport
+            double_report: this.doubleReport,
+            auto_operon_distance: this.autoOperonDistance,
+            operon_distance_factor: this.operonDistanceFactor,
+            computed_operon_distance: this.computedOperonDistance,
 
           });
       },
@@ -138,6 +153,7 @@ export default{
       </div>
       <span class="panel-title">Pipeline Parameters</span>
       <span class="panel-badge">{{ thresholdMethod }} · ±{{ marginUpstream }}/{{ marginDownstream }} bp</span>
+      <!-- <span class="panel-badge" v-if="autoOperonDistance">{{ operonDistanceFactor }}x  <span v-if="computedOperonDistance > 0"> · {{ computedOperonDistance }} bp</span> </span> -->
     </div>
     <i class="ti ti-chevron-down chevron" :class="{open}" aria-hidden="true"></i>
     </div>
@@ -292,11 +308,36 @@ export default{
           <div v-if="inferOperons" class="param-field">
             <div class="param-label-row">
               <label class="form-label" for="max-operon">Max operon distance</label>
-              <span class="param-tooltip" data-tip="Maximum intergenic distance (bp) between consecutive genes to be considered part of the same operon.">
+              <span class="param-tooltip" :data-tip="autoOperonDistance ?  
+              'The maximum operon distance is automatically estimated as the average intergenic distance between genes multiplied by the selected factor.' :
+              'Maximum intergenic distance (bp) between consecutive genes to be considered part of the same operon.'">
                 <i class="ti ti-info-circle" aria-hidden="true"></i>
               </span>
             </div>
-            <div class="input-with-unit">
+
+            <label class="toggle-switch" style="margin-bottom: 0.75rem;">
+            <input type="checkbox" v-model="autoOperonDistance">
+            <span class="toggle-track">
+              <span class="toggle-thumb"></span>
+            </span>
+            <span class="toggle-label">{{ autoOperonDistance ? 'Auto' : 'Manual' }}</span>
+          </label>
+
+            <div v-if="autoOperonDistance" class="operon-auto-block">
+              <div class="chip-group">
+                <button
+                  v-for="f in factorOptions" :key="f"
+                  class="chip"
+                  :class="{ active: operonDistanceFactor === f }"
+                  @click="operonDistanceFactor = f"
+                >{{ f }}×</button>
+              </div>
+              <p v-if="computedOperonDistance" class="input-hint" style="margin-top: 0.5rem;">
+                <i class="ti ti-arrow-right" aria-hidden="true" style="font-size:11px; margin-right:3px;"></i>
+                estimated {{ computedOperonDistance }} bp
+              </p>
+            </div>
+            <div v-else class="input-with-unit">
               <input
                 id="max-operon"
                 type="number"
@@ -559,7 +600,12 @@ export default{
   flex-shrink: 0;
 }
 .upstream-badge   { background: #e6f1fb; color: #0c447c; }
-.downstream-badge { background: #eaf3de; color: #27500a; }
+/* .downstream-badge { background: #eaf3de; color: #27500a; } */
+.downstream-badge {
+  background: #e6f6ef;
+  color: #1f5a3a;
+}
+.operon-badge {background: #fff1e6;  color: #7a3b00; }
 
 /* ── Background model ── */
 .background-tabs {
@@ -613,4 +659,32 @@ export default{
 }
 .bg-sum-indicator.ok   { background: var(--c-success-bg); color: var(--c-success-text); }
 .bg-sum-indicator.warn { background: #faeeda; color: #633806; }
+
+/* ── Chip group ── */
+.chip-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.chip {
+  padding: 0.25rem 0.65rem;
+  font-size: 0.78rem;
+  font-family: var(--mono);
+  font-weight: 500;
+  border: 1px solid var(--c-border);
+  border-radius: 20px;
+  width: 55px;
+  text-align: center;
+  background: none;
+  color: var(--c-muted);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.chip:hover { border-color: var(--c-border-focus); color: var(--c-text); }
+.chip.active {
+  background: var(--c-text);
+  color: white;
+  border-color: var(--c-text);
+}
 </style>

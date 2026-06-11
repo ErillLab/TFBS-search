@@ -117,7 +117,11 @@ json.dumps(res, default=str)
     return pyodide.runPythonAsync(pythonCode)
       .then((resultJson) => {
         console.log(resultJson);
-        return JSON.parse(resultJson);
+        // return JSON.parse(resultJson);
+        return {
+          annotated: JSON.parse(resultJson).annotated,
+          computedOperonDistance: JSON.parse(resultJson).computed_operon_distance,
+        }
       });
   });
 }

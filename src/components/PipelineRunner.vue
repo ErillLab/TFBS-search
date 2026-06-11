@@ -8,7 +8,7 @@ export default{
         motif: {type: String, required: true},
         params: {type: Object, required: true}
     }, 
-    emits: ['pipeline-finished', 'reset-all', 'pipeline-start'],
+    emits: ['pipeline-finished', 'reset-all', 'pipeline-start', 'operon-distance-computed'],
     data() {
         return{
             running: false,
@@ -23,11 +23,27 @@ export default{
                 this.motif?.trim()
             );
         },
+    //     paramsSummary() {
+    //         if (!this.params) return ''
+    //         return `${this.params.threshold_method ?? '—'} 
+    //         ${this.params.threshold_value != null ? `(${this.params.threshold_value})` : ''}
+    //         · ±${this.params.margin_upstream ?? '?'}/${this.params.margin_downstream ?? '?'} bp`
+    //     }
+    // },
         paramsSummary() {
-            if (!this.params) return ''
-            return `${this.params.threshold_method ?? '—'} 
-            ${this.params.threshold_value != null ? `(${this.params.threshold_value})` : ''}
-            · ±${this.params.margin_upstream ?? '?'}/${this.params.margin_downstream ?? '?'} bp`
+          if (!this.params) return ''
+          const parts = [
+            this.params.threshold_method ?? '—',
+            `±${this.params.margin_upstream ?? '?'}/${this.params.margin_downstream ?? '?'} bp`
+          ]
+          if (this.params.infer_operons) {
+            const dist = this.result?.metadata?.operon_distance_used
+            if (dist) parts.push(`operons · ${dist} bp`)
+            else if (this.params.auto_operon_distance) parts.push(`operons · auto ×${this.params.operon_distance_factor} : ${this.params.computed_operon_distance} bp` )
+              
+            else parts.push(`operons · ${this.params.max_distance_operon} bp`)
+          }
+          return parts.join(' · ')
         }
     },
     methods: {
@@ -43,7 +59,10 @@ export default{
                   motifPath: this.motif,
                   params: this.params
               });
-              this.$emit("pipeline-finished", result)
+              if(result.computedOperonDistance != null){
+                this.$emit('operon-distance-computed', result.computedOperonDistance)
+              }
+              this.$emit("pipeline-finished", result.annotated)
           } catch(e){
               this.error = e.message;
           } finally {
@@ -60,19 +79,21 @@ export default{
 </script>
 
 <template>
-    <div v-if="canRun" class="panel run-panel">
+    <div class="panel run-panel">
         <div class="run-inner">
-            <div class="run-info">
+            <div v-if="canRun" class="run-info">
                 <i class="ti ti-player-play" aria-hidden="true"></i>
                 <div>
                     <p class="run-title">Ready to scan</p>
                     <p class="run-subtitle">Genome and motif loaded · {{ paramsSummary }}</p>
                 </div>
             </div>
+
             <div class="run-actions">
-              <button 
+              <button  v-if="canRun"
               class="btn btn-run"
               :disabled="!canRun || running"
+              
               @click="runPipeline"
               >
               <span v-if="running" class="btn-run-spinner"></span>
@@ -94,7 +115,8 @@ export default{
         <i class="ti ti-x" aria-hidden="true"></i>
       </button>
     </div>
-    </div>
+  </div>
+ 
 </template>
 
 
