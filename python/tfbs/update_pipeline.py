@@ -8,7 +8,7 @@ only the necessary pipeline stages are recomputed.
 from tfbs.genome.genome import Genome
 from tfbs.motif.motif import Motif
 from tfbs.scan.scanner import scan_genome
-from tfbs.scan.annotation import find_regulated_genes
+from tfbs.scan.annotation import find_regulated_genes, compute_operon_intergenic_distance
 from tfbs.motif.threshold import compute_threshold
 
 
@@ -20,6 +20,7 @@ PIPELINE_STATE = {
     "params": {},
     "genome_source": None,
     "motif_file": None,
+    "computed_operon_distance": None,
 }
 
 
@@ -138,6 +139,8 @@ def annotate_if_needed(params):
         or _changed(prev, params, "margin_downstream")
         or _changed(prev, params, "infer_operons")
         or _changed(prev, params, "max_distance_operon")
+        or _changed(prev, params, "auto_operon_distance")
+        or _changed(prev, params, "operon_distance_factor")
         or _changed(prev, params, "double_report")
     )
 
@@ -146,6 +149,16 @@ def annotate_if_needed(params):
 
     genome = PIPELINE_STATE["genome"]
     hits = PIPELINE_STATE["hits"]
+    
+    
+    if params.get("auto_operon_distance", False):
+        factor = params.get("operon_distance_factor", 1.0)
+        estimated_distance = compute_operon_intergenic_distance(genome, factor=factor)
+        PIPELINE_STATE["computed_operon_distance"] = round(estimated_distance)
+    else:
+        estimated_distance = params["max_distance_operon"]
+        PIPELINE_STATE["computed_operon_distance"] = None
+    
 
     annotated = find_regulated_genes(
         genome,
@@ -153,7 +166,7 @@ def annotate_if_needed(params):
         margin_upstream=params["margin_upstream"],
         margin_downstream=params["margin_downstream"],
         infer_operons=params["infer_operons"],
-        max_distance_operon=params["max_distance_operon"],
+        max_distance_operon=estimated_distance,
         double_report=params["double_report"],
     )
 
@@ -182,7 +195,11 @@ def update_pipeline(
 
     PIPELINE_STATE["params"] = params.copy()
 
-    return PIPELINE_STATE["annotated"]
+    # return PIPELINE_STATE["annotated"]
+    return {
+        "annotated": PIPELINE_STATE["annotated"],
+        "computed_operon_distance": PIPELINE_STATE["computed_operon_distance"],
+    }
 
 
 def reset_pipeline():
