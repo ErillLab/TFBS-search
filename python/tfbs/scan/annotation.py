@@ -156,7 +156,7 @@ def find_candidate_genes(site, genes_sequence,
     return [c for c in [best_forward, best_reverse] if c is not None]
 
 
-def compute_operon_intergenic_distance(genome, factor=1.0):
+def compute_operon_intergenic_distance(genes_by_chromid, factor=1.0):
     """
     Compute a dynamic intergenic distance threshold for operon inference based on genome statistics.
 
@@ -165,17 +165,14 @@ def compute_operon_intergenic_distance(genome, factor=1.0):
         factor : float --> Multiplier for the median intergenic distance to set the threshold.
     """
     distances = []
-    for chromid in genome.chromids: 
-        genes = features_to_genes(chromid.features)
-        genes_seq = sorted(genes, key=lambda x: x["start"])
-        
+    for chromid_id, genes_seq in genes_by_chromid.items():
         for i in range(len(genes_seq)-1):
             gene1 = genes_seq[i]
             gene2 = genes_seq[i+1]
-            if gene1["strand"] != gene2["strand"]:
+            if gene1["strand"] == -1 and gene2["strand"] == 1:
                 dist = gene2["start"] - gene1["end"]
                 if dist >= 0:
-                    distances.append(dist)
+                    distances.append(dist) 
     if not distances: 
         logger.warning("No intergenic distances found for operon inference. Using default threshold of 100.")
         return 100.0
@@ -301,7 +298,7 @@ def annotate_hit(site, genes_sequence, margin_downstream=50, margin_upstream=250
 
 
 
-def find_regulated_genes(genome, sites, margin_downstream=50, margin_upstream=250, infer_operons=False, max_distance_operon=100, double_report=True):
+def find_regulated_genes(genome, sites, margin_downstream=50, margin_upstream=250, infer_operons=False, max_distance_operon=100, double_report=True, genes_by_chromid=None):
     """
     Assign TFBS hits to regulated genes across an entire genome.
 
@@ -323,8 +320,9 @@ def find_regulated_genes(genome, sites, margin_downstream=50, margin_upstream=25
     site_counter = 1
     
     for chromid in genome.chromids:        
-        genes = features_to_genes(chromid.features)
-        genes_sequence = sorted(genes, key=lambda x: x["start"])
+        # genes = features_to_genes(chromid.features)
+        # genes_sequence = sorted(genes, key=lambda x: x["start"])
+        genes_sequence = genes_by_chromid[chromid.id]
         
         for site in sites_by_chromid.get(chromid.id, []):
             annotations = annotate_hit(
