@@ -24,10 +24,13 @@ def from_fasta(file_path):
     try:
         instances = []
         for record in SeqIO.parse(file_path, "fasta"):
-            instances.append(Seq(str(record.seq).upper()))
+            # instances.append(Seq(str(record.seq).upper()))
+            instances.append(str(record.seq).upper())
         if not instances:
+            
             raise ValueError("No sequences found in the file")
         
+        instances = validate_motif(instances)
         return motifs.create(instances)
      
     except Exception as e:
@@ -42,11 +45,12 @@ def from_list_of_sequences(sequences):
     Returns: 
         Bio.motifs.Motif --> A motif constructed from the provided sequences.
     """
+    sequences = validate_motif(sequences)
     try:
-        instances = []
-        for seq in sequences:
-            instances.append(Seq(str(seq).upper()))
-        return motifs.create(instances)
+        # instances = []
+        # for seq in sequences:
+        #     instances.append(Seq(str(seq).upper()))
+        return motifs.create(sequences)
     except Exception as e:
         logger.error(f"Error creating motif from sequences: {e}")
         raise ValueError(f"Error creating motif from sequences: {e}")
@@ -106,3 +110,27 @@ def load_motif(source):
         else:
             logger.error(f"Unsupported file format: {source}")
             raise ValueError(f"Unsupported file format: {source}")
+        
+        
+def validate_motif(seq_list):
+    """
+    Validate that the input file is a proper motif.
+    Parameters:
+        seq_list : list[str] --> List of sequences to validate as a motif.
+    """
+    if not seq_list:
+        raise ValueError("Motif file is empty.")
+    seq_list = [s.strip().upper() for s in seq_list if s.strip()]
+    
+    for s in seq_list:
+        if any(c not in "ACGT" for c in s):
+            raise ValueError(f"Motif sequences must contain only A, C, G, T characters, sequence '{s}' is not valid.")
+    
+    lenght = {len(s) for s in seq_list}
+    if len(lenght) != 1:
+        raise ValueError(f"All motif sequences must be of the same length")
+    
+    if len(seq_list) < 2:
+        raise ValueError(f"Motif must contain at least 2 sequences to be valid")
+    
+    return seq_list

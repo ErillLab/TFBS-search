@@ -26,7 +26,7 @@ export default{
 
           autoOperonDistance: false,
           operonDistanceFactor: 1.0,
-          factorOptions: [0.5, 0.75, 1, 1.5, 2, 3],
+          factorOptions: [0.5, 0.75, 1, 1.25, 1.5, 2],
         }
     },
     computed:{

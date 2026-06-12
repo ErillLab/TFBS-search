@@ -109,17 +109,22 @@ export default{
         },
 
         downloadCSVFile() {
+            const filename = prompt("Enter a name for the CSV file:", "tfbs_results.csv")
+
             const csv = this.convertToCSV();
             const blob = new Blob([csv], { type: "text/csv"});
             const url = URL.createObjectURL(blob)
 
             const a = document.createElement("a");
             a.href = url;
-            a.download = "tfbs_results.csv";
+            // a.download = "tfbs_results.csv";
+            a.download = filename;
             a.click();
             URL.revokeObjectURL(url);
         },
         downloadJSONFile() {
+            const filename = prompt("Enter a name for the JSON file:", "tfbs_results.json")
+            if (!filename) return
             const blob = new Blob([JSON.stringify(this.hits, null, 2)], {
                 type: "application/json"
             });
@@ -127,7 +132,8 @@ export default{
 
             const a = document.createElement("a");
             a.href = url;
-            a.download = "tfbs_results.json";
+            // a.download = "tfbs_results.json";
+            a.download = filename
             a.click();
 
             URL.revokeObjectURL(url);

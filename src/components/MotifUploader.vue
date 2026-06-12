@@ -271,11 +271,29 @@ motif = Motif.load_motif("${path}")
             }
         },
         classifyMotifError(e){
-            if (e.message.includes("Unsupported file format")) {
+            const msg = e.message || ""
+            if (msg.includes("Unsupported file format")) {
                 return "The uploaded file is not in a supported format. Please upload a valid motif file."
-            } else {
-                return e.message
+            } else if (msg.includes("Motif file is empty")){
+                return "The motif file is empty"
+            } else if(msg.includes("Motif sequences must contain only")) {
+                return "Invalid characters found. Only A, C, G, T are allowed."
+            } else if (msg.includes("same length")) {
+                return "All motif sequences must have the same length."
+            } else if (msg.includes("at least 2 sequences")) {
+                return "A motif must contain at least 2 sequences."
+            } 
+
+            if (msg.includes("Error creating motif")) {
+                return "The motif file is not valid. Please check the sequences."
+            } else if (msg.includes("Error loading sequences from text file")) {
+                return "The text file does not contain a valid motif."
             }
+            if (msg.includes("Unsupported file format")) {
+                return "Unsupported file format. Please upload a FASTA, TXT or JASPAR motif."
+            }
+            const lines = msg.split("\n")
+            return lines[lines.length-1].trim()
         }
     },
     computed: {

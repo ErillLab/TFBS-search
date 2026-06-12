@@ -8,7 +8,7 @@ only the necessary pipeline stages are recomputed.
 from tfbs.genome.genome import Genome
 from tfbs.motif.motif import Motif
 from tfbs.scan.scanner import scan_genome
-from tfbs.scan.annotation import find_regulated_genes, compute_operon_intergenic_distance
+from tfbs.scan.annotation import find_regulated_genes, compute_operon_intergenic_distance, features_to_genes
 from tfbs.motif.threshold import compute_threshold
 
 
@@ -21,6 +21,7 @@ PIPELINE_STATE = {
     "genome_source": None,
     "motif_file": None,
     "computed_operon_distance": None,
+    "genes_by_chromid": None,
 }
 
 
@@ -52,6 +53,13 @@ def load_genome(genome_files=None, genome_accession=None):
         raise ValueError("Genome source missing")
 
     PIPELINE_STATE["genome"] = genome
+    PIPELINE_STATE["genes_by_chromid"] = {
+        chromid.id: sorted(
+            features_to_genes(chromid.features),
+            key=lambda g: g["start"]
+        )
+        for chromid in genome.chromids
+    }
     PIPELINE_STATE["genome_source"] = source
 
 
@@ -153,7 +161,7 @@ def annotate_if_needed(params):
     
     if params.get("auto_operon_distance", False):
         factor = params.get("operon_distance_factor", 1.0)
-        estimated_distance = compute_operon_intergenic_distance(genome, factor=factor)
+        estimated_distance = compute_operon_intergenic_distance(PIPELINE_STATE['genes_by_chromid'], factor=factor)
         PIPELINE_STATE["computed_operon_distance"] = round(estimated_distance)
     else:
         estimated_distance = params["max_distance_operon"]
@@ -168,6 +176,7 @@ def annotate_if_needed(params):
         infer_operons=params["infer_operons"],
         max_distance_operon=estimated_distance,
         double_report=params["double_report"],
+        genes_by_chromid=PIPELINE_STATE["genes_by_chromid"],
     )
 
     PIPELINE_STATE["annotated"] = annotated
