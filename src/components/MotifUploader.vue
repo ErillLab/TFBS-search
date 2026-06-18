@@ -109,6 +109,7 @@
 import { writeToVirtualFS, readFileAsText } from '@/services/tfbsService';
 import { getPyodide } from '@/services/pyodide';
 import MotifFileResult from './MotifFileResult.vue';
+import { motifWorkerClient } from "@/services/motifWorkerClient";
 export default{
     name: "MotifUploader",
     components: {MotifFileResult},
@@ -147,61 +148,92 @@ export default{
             }
         }
     },
-    async mounted() {
-        try {
-            this.pyodide = await getPyodide()
-            this.pyodideStatus = 'ready'
-        } catch (e) {
-            this.pyodideStatus = 'error'
-            this.pyodideError = e.message
-        }
+    mounted() {
+        this.pyodideStatus = 'ready'
     },
+    // async mounted() {
+    //     try {
+    //         this.pyodide = await getPyodide()
+    //         this.pyodideStatus = 'ready'
+    //     } catch (e) {
+    //         this.pyodideStatus = 'error'
+    //         this.pyodideError = e.message
+    //     }
+    // },
     methods: {
+//         async onMotifFile(event){
+//             this.showStatus("", false);
+ 
+//             this.motifResult = null
+//             if (!this.isReady) return
+
+//             const file = event.target.files[0]
+//             if (!file) return
+
+//             try{
+//                 const content = await readFileAsText(file)
+//                 const path = writeToVirtualFS(this.pyodide, file.name, content)
+
+//                 const result = await this.pyodide.runPythonAsync(`
+// from tfbs.motif.loader_motifs import load_motif
+// motif = load_motif("${path}")
+
+//                 `)
+//                 let seqs = [];
+
+//                 if (file.name.endsWith(".fa") || file.name.endsWith(".fasta") || file.name.endsWith(".jaspar")) {
+//                     seqs = this.parserMotif(content);
+//                 } else {
+//                     seqs = content.split("\n").map(s => s.trim()).filter(Boolean);
+//                 }
+
+//                 this.loadedSequences = seqs;
+
+
+                
+//                 this.loadedFileName = file.name;
+//                 this.$emit("motif-loaded", path)
+
+//             }
+//             catch(e){
+//                 this.showStatus(this.classifyMotifError(e), false);         
+//             }
+//         }, 
         async onMotifFile(event){
             this.showStatus("", false);
- 
-            this.motifResult = null
-            if (!this.isReady) return
-
-            const file = event.target.files[0]
-            if (!file) return
+            const file = event.target.files[0];
+            if (!file) return;
 
             try{
-                const content = await readFileAsText(file)
-                const path = writeToVirtualFS(this.pyodide, file.name, content)
-
-                const result = await this.pyodide.runPythonAsync(`
-from tfbs.motif.loader_motifs import load_motif
-motif = load_motif("${path}")
-
-                `)
+                const content = await file.text();
+                const result = await motifWorkerClient.validateMotifFile({
+                    filename: file.name,
+                    content,
+                });
+                if (!result.ok){
+                    this.showStatus(this.classifyMotifError({message: result.error}), false);
+                    return;
+                }
                 let seqs = [];
-
                 if (file.name.endsWith(".fa") || file.name.endsWith(".fasta") || file.name.endsWith(".jaspar")) {
                     seqs = this.parserMotif(content);
                 } else {
                     seqs = content.split("\n").map(s => s.trim()).filter(Boolean);
                 }
-
                 this.loadedSequences = seqs;
-
-
-                
                 this.loadedFileName = file.name;
-                this.$emit("motif-loaded", path)
-
+                this.$emit("motif-loaded", `/tmp/${file.name}`);
+            } catch(e){
+                this.showStatus(this.classifyMotifError(e), false)
             }
-            catch(e){
-                this.showStatus(this.classifyMotifError(e), false);         
-            }
-        }, 
+        },
         //Text
         async onMotifText(){
             this.motifResult = null
             if (!this.isReady || !this.motifText.trim()) return
 
             this.showStatus("", false);          
-            try {
+            // try {
 
                 const sequences = this.motifText
                 .split('\n')
@@ -209,34 +241,42 @@ motif = load_motif("${path}")
                 .filter(Boolean)
                 
                 if (sequences.length === 0){
-                    throw new Error("No sequence has been introduced.")
+                    this.showStatus("No sequence has been introduced.", false); 
+                    return;
                 }
 
                 const dna = /^[ACGT]+$/
                 const expectedLength = sequences[0].length
                 for (const seq of sequences){
                     if (!dna.test(seq) || seq.length !== expectedLength) {
-                        throw new Error(`Invalid sequence ${seq}. All sequences must be the same length and only the ATGC characters are allowed. `)
+                        this.showStatus(`Invalid sequence ${seq}.`, false);
+                        return;
                     }
                 }
-                
-                const filename = "motif_from_text.txt"
-                const path = writeToVirtualFS(this.pyodide, filename, sequences)
-                console.log(typeof(path), path)
-                
-                const result = await this.pyodide.runPythonAsync(`
-from tfbs.motif.motif import Motif
-motif = Motif.load_motif("${path}")
 
-`)
+                const result = await motifWorkerClient.validateMotifText(sequences);
+                if(!result.ok){
+                    this.showStatus(this.classifyMotifError({message: result.error}), false);
+                    return;
+                }
+                
+//                 const filename = "motif_from_text.txt"
+//                 const path = writeToVirtualFS(this.pyodide, filename, sequences)
+//                 console.log(typeof(path), path)
+                
+//                 const result = await this.pyodide.runPythonAsync(`
+// from tfbs.motif.motif import Motif
+// motif = Motif.load_motif("${path}")
+
+// `)
                 this.loadedSequences = sequences
-                this.loadedFileName = filename;
-                this.$emit("motif-loaded", path);
+                this.loadedFileName = "motif_from_text.txt";
+                this.$emit("motif-loaded", result.path);
 
 
-            } catch (e) {
-                this.showStatus(e.message, false);          
-            }
+            // } catch (e) {
+            //     this.showStatus(e.message, false);          
+            // }
         },
         parserMotif(text){
             return text.split("\n").map(s => s.trim()).filter(s => s && !s.startsWith(">"));

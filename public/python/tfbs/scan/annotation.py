@@ -1,4 +1,5 @@
 import logging
+from tfbs.cancel_flag import check_cancel
 
 logger = logging.getLogger(__name__)
 
@@ -126,6 +127,7 @@ def find_candidate_genes(site, genes_sequence,
         candidates = []
         
         for i, gene in enumerate(genes):
+            check_cancel()
             prev_gene = genes_sequence[i-1] if i > 0 else None 
             distance = distance_to_tls(site_start, site_end, site_strand, gene)
             region = classify_region(
@@ -148,8 +150,10 @@ def find_candidate_genes(site, genes_sequence,
         elif candidates:
             return min(candidates, key=lambda x: abs(x["distance"]))
         return None
-
+    check_cancel()
     best_forward = best_candidate(genes_forward)              
+    
+    check_cancel()
     best_reverse = best_candidate(genes_reverse)
      
     
@@ -166,7 +170,9 @@ def compute_operon_intergenic_distance(genes_by_chromid, factor=1.0):
     """
     distances = []
     for chromid_id, genes_seq in genes_by_chromid.items():
+        check_cancel()
         for i in range(len(genes_seq)-1):
+            check_cancel()
             gene1 = genes_seq[i]
             gene2 = genes_seq[i+1]
             if gene1["strand"] == -1 and gene2["strand"] == 1:
@@ -201,6 +207,7 @@ def infer_operon(gene, genes_sequence, max_distance=100):
     index_gene = genes_sequence.index(gene)
     if gene["strand"] == 1:
         for gen in genes_sequence[index_gene+1:]:
+            check_cancel()
             if gen["strand"] == 1:
                 distance = gen["start"] - current_boundry
                 if distance < 0: 
@@ -219,6 +226,7 @@ def infer_operon(gene, genes_sequence, max_distance=100):
     else:
         
         for gen in reversed(genes_sequence[:index_gene]):
+            check_cancel()
             if gen["strand"] == -1:           
                 distance = current_boundry - gen["end"]
                 if distance < 0: 
@@ -320,11 +328,13 @@ def find_regulated_genes(genome, sites, margin_downstream=50, margin_upstream=25
     site_counter = 1
     
     for chromid in genome.chromids:        
+        check_cancel()
         # genes = features_to_genes(chromid.features)
         # genes_sequence = sorted(genes, key=lambda x: x["start"])
         genes_sequence = genes_by_chromid[chromid.id]
         
         for site in sites_by_chromid.get(chromid.id, []):
+            check_cancel()
             annotations = annotate_hit(
                 site, genes_sequence, margin_downstream, margin_upstream, infer_operons, max_distance_operon
             )
@@ -332,6 +342,27 @@ def find_regulated_genes(genome, sites, margin_downstream=50, margin_upstream=25
             site_id = site_counter
             site_counter += 1
             
+            if not annotations:
+                results.append({
+                    "Site ID": site_id,
+                    "Chromid Id": chromid.id,
+                    "Site Score": site["Site Score"],
+                    "Site Start": site["Site Start"],
+                    "Site End": site["Site End"],
+                    "Site Strand": site["Site Strand"],
+                    "Site Mode": "Unclassified",
+                    "Relative Distance": None,
+                    "Gene locus tag": None,
+                    "Gene Name": None,
+                    "Protein Id": None,
+                    "Gene Start": None,
+                    "Gene End": None,
+                    "Gene Strand": None,
+                    "Gene Product": None,
+                    "Operon": ""
+                })
+                continue
+                        
             if double_report and len(annotations) > 1:
                 annotations_to_report = annotations
             else:
@@ -357,7 +388,7 @@ def find_regulated_genes(genome, sites, margin_downstream=50, margin_upstream=25
                     annotations_to_report = []
                             
             for annotation in annotations_to_report:
-                
+                check_cancel()
                 results.append({
                     "Site ID": site_id,
                     "Chromid Id": chromid.id,

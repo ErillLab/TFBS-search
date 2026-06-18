@@ -8,8 +8,8 @@
         <div class="panel-icon">
           <i class="ti ti-table" aria-hidden="true"></i>
         </div>
-        <span class="panel-title">Hits table</span>
-        <span v-if="hits?.length" class="panel-badge ok">{{ hits.length }} hits</span>
+        <span class="panel-title">Results table</span>
+        <span v-if="hits?.length" class="panel-badge ok">{{ hits.length }} results</span>
       </div>
       <i class="ti ti-chevron-down chevron" :class="{ open }" aria-hidden="true"></i>
     </div>

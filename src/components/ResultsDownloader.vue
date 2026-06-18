@@ -150,7 +150,7 @@ export default{
                 <i class="ti ti-download" aria-hidden="true"></i>
             </div>
             <span class="panel-title">Results</span>
-            <span v-if="hasHits" class="panel-badge ok">{{ hits.length }} hits</span>
+            <span v-if="hasHits" class="panel-badge ok">{{ hits.length }} results </span>
         </div>
         <i class="ti ti-chevron-down chevron" :class="{open}" aria-hidden="true"></i>
     </div>

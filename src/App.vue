@@ -1,8 +1,6 @@
 <script>
 import { RouterLink, RouterView } from 'vue-router'
 import { getPyodide } from '@/services/pyodide';
-import HelloWorld from './components/HelloWorld.vue'
-import UploadFile from './components/UploadFile.vue';
 import GenomeUploader from './components/GenomeUploader.vue';
 import MotifUploader from './components/MotifUploader.vue';
 import ParamsConfig from './components/ParamsConfig.vue';
@@ -13,8 +11,7 @@ import ResultsTable from './components/ResultsTable.vue';
 
 export default{
   components: {
-    HelloWorld,
-    UploadFile, 
+
     GenomeUploader,
     MotifUploader,
     ParamsConfig,
@@ -114,6 +111,7 @@ export default{
         @pipeline-finished="result = $event"
         @reset-all="resetAll"
       />
+     
 
       <ResultsDownloader
         v-if="result"

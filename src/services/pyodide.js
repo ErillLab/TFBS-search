@@ -15,6 +15,7 @@ export async function getPyodide() {
 async function _loadTfbsModules(pyodide) {
     const tfbsModules = [
         'tfbs/__init__.py',
+        'tfbs/cancel_flag.py',
         'tfbs/genome/__init__.py',
         'tfbs/genome/genome.py',
         'tfbs/genome/loader_genomes.py',
@@ -26,7 +27,8 @@ async function _loadTfbsModules(pyodide) {
         'tfbs/scan/scanner.py',
         'tfbs/scan/annotation.py',
         'tfbs/pipeline.py',
-        'tfbs/update_pipeline.py'
+        'tfbs/update_pipeline.py',
+
     ]
 
     for (const modulePath of tfbsModules) {
