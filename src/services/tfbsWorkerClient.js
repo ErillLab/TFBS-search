@@ -78,7 +78,7 @@
 // }
 
 // src/services/tfbsWorkerClient.js
-import { getTfbsWorker, getTfbsWorkerReady } from "./tfbsWorkerInstance";
+import { getTfbsWorker, getTfbsWorkerReady, requestCancel, clearCancelFlag } from "./tfbsWorkerInstance";
 
 export async function runTfbsPipelineInWorker({
     genomeSource,
@@ -157,7 +157,11 @@ json.dumps(res, default=str)`;
 }
 
 
+// export function cancelTfbsPipeline() {
+//     const w = getTfbsWorker()
+//     w.postMessage({type: "cancel"});
+// }
+
 export function cancelTfbsPipeline() {
-    const w = getTfbsWorker()
-    w.postMessage({type: "cancel"});
+    requestCancel();
 }

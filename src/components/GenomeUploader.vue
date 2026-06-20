@@ -267,6 +267,7 @@ export default {
                 {id: 'species', label: 'Species'}
             ],
             pyodide: null,
+            genomeError: "",
             uploadedFiles: [],
             uploadedAccessions: [],
             accessionInput: '',
@@ -294,47 +295,22 @@ export default {
             }
         }
     },
-    // async mounted() {
-    //         try {
-    //             this.pyodide = await getPyodide()
-    //             this.pyodideStatus = 'ready'
-    //         } catch (e) {
-    //             this.pyodideStatus = 'error'
-    //             this.pyodideError = e.message
-    //         }
-    //     },
     mounted(){
         this.pyodideStatus = 'ready'
     },
     methods: {
-    //     async onGenomeFiles(event) {
-    //     if (!this.isReady) return
-    //     for (const file of Array.from(event.target.files)) {
-    //         try {
-    //         const path = writeToVirtualFS(this.pyodide, file.name, await readFileAsText(file))
-    //         const result = await this.pyodide.runPythonAsync(`
-    // from tfbs.genome.loader_genomes import load_from_file
-    // records = load_from_file(["${path}"])
-    // `)
-    //         this.uploadedFiles.push({ name: file.name, path, status: result })
-    //         } catch (e) {
-    //             this.showStatus(this.classifyGenomeError(e), false)
-    //         }
-    //     }
-    //     this.$emit('genome-loaded', {
-    //         source: 'file',
-    //         data: this.uploadedFiles.map(g => g.path)
-    //     })
-    //     },
-
         async onGenomeFiles(event){
             const files = Array.from(event.target.files);
             for (const file of files){
+                // const buffer = await file.arrayBuffer();
+                // const content = new Uint8Array(buffer);
                 const content = await file.text();
+                
                 const result = await genomeWorkerClient.validateGenomeFile({
                     filename: file.name,
                     content,
                 });
+                console.log("validate genome result: ", result);
                 if(result.ok){
                     this.uploadedFiles.push({
                         name: file.name,
@@ -360,60 +336,30 @@ export default {
         
             for(const acc of accessions){
                 const result = await genomeWorkerClient.validateAccession(acc);
+                console.log("[UPLOADER] validateAccession result:", result);
+
                 if (result.ok) {
                     this.uploadedAccessions.push({ accession: acc, status: "OK" });
                 } else {
                     this.showStatus(this.classifyGenomeError(result.error), false);
-                    this.uploadedAccessions.push({ accession: acc, status: "ERROR" });
+                    // this.uploadedAccessions.push({ accession: acc, status: "ERROR" });
+                    this.loadingAccession = false;
+                    return;
                 }
             }
             this.loadingAccession = false
-            this.$emit('genome-loaded', { source: 'accession', data: accessions });
-
-
-
-            //     try {
-            //     const result = await this.pyodide.runPythonAsync(`
-            //         import json
-            //         from tfbs.genome.loader_genomes import load_from_accession
-            //         records = load_from_accession("${acc}")
-            //         records
-                    
-            //     `);
-            //     const records = result.toJs ? result.toJs() : result
-            //     console.log(records)
-            //     const isEmpty = !records || (Array.isArray(records) && records.length === 0)
-            //     console.log("isEmpty", isEmpty)
-
-            //     if (isEmpty) {
-            //         this.showStatus(`Accession "${acc}" is not valid or no data found`, false)
-            //         // this.uploadedAccessions.push({ acc, status: "error" })
-            //         console.log("dins de l'if")
-            //     } else {
-            //         this.uploadedAccessions.push({ acc, status: "ok" })
-            //         this.showStatus(`Accession "${acc}" loaded successfully`, true) //no se si deixar-ho !!
-            //     }
-            
-            // } catch (e) {
-            //     this.showStatus(e.message, false)
-            //     this.uploadedAccessions.push({
-            //         acc,
-            //         status: "error"
-            //     });
-            // }
-            // }
-          
+            this.$emit('genome-loaded', { source: 'accession', data: [...accessions] });
         
         },
         onSpeciesConfirmed({ accessions, assemblyName }) {
             for (const acc of accessions) {
-                if (!this.uploadedAccessions.find(a => a.acc === acc)) {
-                this.uploadedAccessions.push({ acc, status: 'ok' })
+                if (!this.uploadedAccessions.find(a => a.accession === acc)) {
+                this.uploadedAccessions.push({ accession: acc, status: 'ok' })
                 }
             }
             this.$emit('genome-loaded', {
                 source: 'accession',
-                data: this.uploadedAccessions.map(a => a.acc)
+                data: this.uploadedAccessions.map(a => a.accession)
             })
             console.log(`Added ${accessions.length} sequences from ${assemblyName}`, true)
         },
@@ -441,11 +387,6 @@ export default {
                 const accessions = sequences.map(s => s.accession).filter(Boolean)
 
                 console.log(accessions)
-                // console.log("accessions", accessions)
-                // for (const acc of accessions) {
-                //     console.log("dins del bucle")
-                //     this.uploadedSpecies.push({acc, status:'ok'})
-                // }
                 this.uploadedSpecies.push({
                     assemblyAccession: assembly.accession,
                     assemblyName: assembly.assemblyName,
@@ -480,25 +421,6 @@ export default {
                 this.open = !this.open
             }
         },
-        // removeFile(index) {
-        //     if (!this.isReady) {
-        //         this.showStatus("Pyodide is still loading", false)
-        //         return
-        //     }
-
-        //     try {
-        //         this.pyodide.FS.unlink(this.uploadedFiles[index].path)
-        //     } catch (e) {
-        //         console.warn("FS unlink error:", e)
-        //     }
-
-        //     this.uploadedFiles.splice(index, 1)
-
-        //     this.$emit('genome-loaded', {
-        //         source: 'file',
-        //         data: this.uploadedFiles.map(g => g.path)
-        //     })
-        // },
         removeFile(index) {
             this.uploadedFiles.splice(index, 1)
 
@@ -511,7 +433,7 @@ export default {
             this.uploadedAccessions.splice(index, 1)
             this.$emit('genome-loaded', {
                 source: 'accession',
-                data: this.uploadedAccessions.map(a => a.acc)
+                data: this.uploadedAccessions.map(a => a.accession)
             })
         }, 
         removeSpecies(index) {
@@ -522,12 +444,6 @@ export default {
             })
         },
         changeTabs(tabId){
-
-            // if (this.activeTab !== tabId && this.uploadedAccessions.length > 0 || this.uploadedFiles.length > 0 || this.uploadedSpecies.length > 0){
-            //     this.showStatus('Remove loaded accessions before using file upload mode.', false)
-            //     return
-            // }
-            // this.activeTab = tabId
             let mes = 'genome'
             if (this.activeTab === 'accession'){
                 mes = 'loaded accessions'
@@ -559,14 +475,19 @@ export default {
             }, 3000)
         },
         classifyGenomeError(e){
-            if (e.message.includes("No records founds")) {
+            const msg = typeof e === "string" ? e : (e?.message || "");
+            if (msg.includes("Accession not found") || msg.includes("invalid")) {
+                const match = msg.match(/Accession.*?: (.*)/);
+                return match ? `Invalid accession.` : "Invalid accession identifier.";
+            }
+            if (msg.includes("No records founds")) {
                 return "No genome found for the provided accession number(s). Please check the accession(s) and try again."
-            } else if (e.message.includes("Failed to fetch genome data")) {
+            } else if (msg.includes("Failed to fetch genome data")) {
                 return "Network error while fetching genome data. Please check your connection and try again."
-            } else if (e.message.includes("Unsupported file format")) {
+            } else if (msg.includes("Unsupported file format")) {
                 return "The uploaded file is not in a supported format. Please upload a valid GenBank file."
             } else {
-                return e.message
+                return msg;
             }
         }
     }, 

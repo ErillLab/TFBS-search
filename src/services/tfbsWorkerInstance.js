@@ -2,8 +2,11 @@
 let worker = null;
 let readyPromise = null;
 
+let cancelBuffer = null;
+
 export function getTfbsWorker() {
     if (!worker) {
+        cancelBuffer = new SharedArrayBuffer(1);
         worker = new Worker(
             new URL("../workers/tfbsWorker.js", import.meta.url),
             { type: "module" }
@@ -15,7 +18,10 @@ export function getTfbsWorker() {
         };
         worker.onmessageerror = (e) => {
             console.error("[tfbsWorker] MESSAGE ERROR:", e);
-        };
+        }; 
+
+        //Send the shared buffer to the worker 
+        worker.postMessage({type:"init-cancel-buffer", buffer: cancelBuffer })
 
         readyPromise = new Promise((resolve) => {
             const handler = (e) => {
@@ -34,4 +40,18 @@ export function getTfbsWorker() {
 export function getTfbsWorkerReady() {
     getTfbsWorker();
     return readyPromise;
+}
+
+export function requestCancel() {
+    if(cancelBuffer) {
+        const view = new Uint8Array(cancelBuffer);
+        Atomics.store(view, 0, 1);
+    }
+}
+
+export function clearCancelFlag() {
+    if(cancelBuffer) {
+        const view = new Uint8Array(cancelBuffer);
+        Atomics.store(view, 0, 0);
+    }
 }

@@ -36,7 +36,7 @@ export async function searchAssemblies(speciesName) {
 
 export async function getSequenceReports(assemblyAccession){
     const res = await fetch(
-        `${BASE}/genome/accession/${assemblyAccession}/sequence_reports?`,
+        `${BASE}/genome/accession/${assemblyAccession}/sequence_reports?role_filters=assembled-molecule`,
         { headers: { Accept: "application/json" } }
     )
     if (!res.ok) throw new Error(`NCBI error ${res.status}: ${await res.text()}`)

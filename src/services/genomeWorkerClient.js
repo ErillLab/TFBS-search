@@ -12,7 +12,11 @@ export const genomeWorkerClient = {
           w.removeEventListener("message", handler);
           resolve(e.data.payload);
         }
+        if(e.data.type === "debug") {
+          console.log("[DEBUG FROM WORKER]", e.data.payload.received)
+        }
       };
+
 
       w.addEventListener("message", handler);
 
@@ -31,6 +35,8 @@ export const genomeWorkerClient = {
       const handler = (e) => {
         if (e.data.type === "accession-valid") {
           w.removeEventListener("message", handler);
+          console.log("[CLIENT] Worker response:", e.data);
+
           resolve(e.data.payload);
         }
       };

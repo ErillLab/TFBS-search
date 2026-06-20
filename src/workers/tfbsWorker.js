@@ -1,10 +1,22 @@
-// import { walk } from "vue/compiler-sfc";
-
-// importScripts("https://cdn.jsdelivr.net/pyodide/v0.29.4/full/pyodide.js");
-import { loadPyodide } from "https://cdn.jsdelivr.net/pyodide/v0.29.4/full/pyodide.mjs";
+const loadPyodide = (await import(
+  "https://cdn.jsdelivr.net/pyodide/v0.29.4/full/pyodide.mjs"
+)).loadPyodide;
 
 let pyodide = null;
 let cancelRequested = false;
+
+let cancelView = null;
+
+function writeFileChunked(path, content, chunkSize = 1024 * 1024) {
+    try {pyodide.FS.unlink(path);} catch {}
+
+    pyodide.FS.writeFile(path, new Uint8Array(0));
+
+    for (let i = 0; i < content.length; i += chunkSize) {
+        const chunk = content.slice(i, i+chunkSize);
+        pyodide.FS.writeFile(path, chunk, {append: true});
+    }
+}
 
 async function _loadTfbsModules(pyodide) {
     const tfbsModules = [
@@ -87,14 +99,23 @@ def progress(msg):
 loadPyodideAndPackages();
 
 onmessage = async (event) => {
+    console.log("[WORKER] Recived:", event.data)
     const { type, payload } = event.data;
+
+    if (type === "init-cancel-buffer") {
+        cancelView = new Uint8Array(event.data.buffer);
+        return;
+    }
 
   /* ---------------- VALIDACIÓ DE GENOMES ---------------- */
     if (type === "validate-genome") {
         const { filename, content } = payload;
 
         try {
-        pyodide.FS.writeFile(`/tmp/${filename}`, content);
+            pyodide.FS.writeFile(`/tmp/${filename}`, content);
+            // pyodide.FS.writeFileChunked(`/tmp/${filename}`, content);
+            // writeFileChunked(`/tmp/${filename}`, content);
+
 
         await pyodide.runPythonAsync(`
 from tfbs.genome.loader_genomes import load_from_file
@@ -119,10 +140,12 @@ load_from_file(["/tmp/${filename}"])
         const { accession } = payload;
 
         try {
-        await pyodide.runPythonAsync(`
-from tfbs.genome.loader_genomes import load_from_accession
-load_from_accession("${accession}")
+        const res = await pyodide.runPythonAsync(`
+from tfbs.genome.loader_genomes import accession_exists
+accession_exists("${accession}")
         `);
+        console.log("[WORKER] Validating accession:", res);
+        
 
         postMessage({
             type: "accession-valid",
@@ -130,6 +153,7 @@ load_from_accession("${accession}")
         });
 
         } catch (err) {
+        console.error("[WORKER] ERROR in validate-accession:", err);
         postMessage({
             type: "accession-valid",
             payload: { ok: false, error: err.toString() },
@@ -186,35 +210,33 @@ Motif.load_motif("/tmp/motif_from_text.txt")
     }
 
   /* ---------------- EXECUCIÓ DEL PIPELINE ---------------- */
-    if( type === "cancel"){
-        console.log("CANELAAAAAAAAAAAAAAAT")
-        cancelRequested = true;
-        await pyodide.runPythonAsync(`
-from tfbs.scan. import set_cancel_flag
-set_cancel_flag(True)
-    `);
-        return;
-    }
-    else if (type === "run") {
+    
+    if (type === "run") {
+        if(cancelView) Atomics.store(cancelView,0, 0);
         cancelRequested = false;
         const { code, files } = payload;
 
-         await pyodide.runPythonAsync(`
-from tfbs.cancel_flag import set_cancel_flag
-set_cancel_flag(False) `);
+//          await pyodide.runPythonAsync(`
+// from tfbs.cancel_flag import set_cancel_flag
+// set_cancel_flag(False) `);
+        pyodide.globals.set("_cancel_view", cancelView);
+        await pyodide.runPythonAsync(`
+from tfbs.cancel_flag import set_cancel_view
+set_cancel_view(_cancel_view)
+        `);
 
         try {
             if (files) {
                 for (const f of files) {
-                pyodide.FS.writeFile(f.path, f.content);
+                    pyodide.FS.writeFile(f.path, f.content);
                 }
             }
 
             const result = await pyodide.runPythonAsync(code);
-            if (cancelRequested) {
-                postMessage({type: "cancelled"});
-                return;
-            }
+            // if (cancelRequested) {
+            //     postMessage({type: "cancelled"});
+            //     return;
+            // }
             
 
             postMessage({
@@ -231,5 +253,15 @@ set_cancel_flag(False) `);
         }
        
          
+    }
+    if( type === "cancel"){
+//         console.log("CANELAAAAAAAAAAAAAAAT")
+//         cancelRequested = true;
+//         await pyodide.runPythonAsync(`
+// from tfbs.scan. import set_cancel_flag
+// set_cancel_flag(True)
+//     `);
+//         return;
+        if(cancelView) Atomics.store(cancelView, 0, 1);
     }
 };

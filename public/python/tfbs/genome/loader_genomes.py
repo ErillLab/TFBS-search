@@ -1,6 +1,7 @@
 from Bio import SeqIO
 import io
 from wa_entrez import WAEntrezClient
+from tfbs.cancel_flag import check_cancel
 from pathlib import Path
 import logging
 import time
@@ -49,12 +50,14 @@ def load_from_accession(accession, email="test@example.com"):
     WAEntrez = WAEntrezClient(email=email)
     records = []
     for acc in accession:
+        check_cancel()
         logger.info(f"Fetching record for accession: {acc}")
         record = []
         try:
             handle = WAEntrez.wa_efetch(db="nucleotide", id=acc, rettype="gbwithparts", retmode="text")
             record = list(SeqIO.parse(io.StringIO(handle), "genbank"))
-            handle.close() 
+            # handle.close() 
+            check_cancel()
             logger.info(f"Retrieved record for accession: {acc}")
             
         except Exception as e:
@@ -79,4 +82,23 @@ def load_genome(data, email="test@example.com"):
         return load_from_file(paths)
     else:
         return load_from_accession(data, email=email)
-         
+
+def accession_exists(accession, email="test@example.com"):
+    """
+    Lightweight check to verify if an accession exists in NCBI.
+    Does NOT download or parse the full GenBank file.
+    Raises ValueError if accession does not exist.
+    Returns True if valid.
+    """
+    WAEntrez = WAEntrezClient(email=email)
+    try:
+        summary = WAEntrez.wa_esummary(db="nucleotide", id=accession)
+        if not summary:
+            raise ValueError(f"ACcession not found: {accession}")
+        
+        text = summary.lower()
+        if "<error>" in text:
+            raise ValueError(f"Accession not found: {accession}")
+        return True
+    except Exception as e: 
+        raise ValueError(f"Accession not found or invalid: {accession}") from e

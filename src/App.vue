@@ -1,13 +1,13 @@
 <script>
 import { RouterLink, RouterView } from 'vue-router'
-import { getPyodide } from '@/services/pyodide';
+// import { getPyodide } from '@/services/pyodide';
 import GenomeUploader from './components/GenomeUploader.vue';
 import MotifUploader from './components/MotifUploader.vue';
 import ParamsConfig from './components/ParamsConfig.vue';
 import PipelineRunner from './components/PipelineRunner.vue';
 import ResultsDownloader from './components/ResultsDownloader.vue';
 import ResultsTable from './components/ResultsTable.vue';
-
+import { getTfbsWorker, getTfbsWorkerReady } from './services/tfbsWorkerInstance.js';
 
 export default{
   components: {
@@ -41,14 +41,16 @@ export default{
       return { loading: 'Loading engine…', ready: 'Engine ready', error: 'Engine error' }[this.pyodideStatus]
     },
    
-    },
-     async mounted() {
-      try {
-        await getPyodide()
-        this.pyodideStatus = 'ready'
-      } catch {
-        this.pyodideStatus = 'error'
-      }
+  },
+  async mounted() {
+    try {
+      getTfbsWorker();
+      await getTfbsWorkerReady();
+      // await getPyodide()
+      this.pyodideStatus = 'ready'
+    } catch {
+      this.pyodideStatus = 'error'
+    }
   },
   methods: {
     resetAll(){
