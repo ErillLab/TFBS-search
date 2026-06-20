@@ -2,6 +2,8 @@ import math
 from Bio.Seq import Seq
 import logging
 import numpy as np
+from tfbs.cancel_flag import check_cancel
+
 
 logger = logging.getLogger(__name__)
     
@@ -64,6 +66,7 @@ def scan_sequence(sequence, motif, threshold=0, integration_log=False):
     
     
     for pos in sorted(set(forward_hits) | set(reverse_hits)):
+        check_cancel()
         window = sequence[pos:pos+motif_length]
         score_forward = forward_hits.get(pos)
         score_reverse = reverse_hits.get(pos)
@@ -138,6 +141,7 @@ def scan_genome(genome, motif, threshold=0, integration_log=False):
     """
     result = []
     for chromid in genome.chromids:
+        check_cancel()
         chromid_results = scan_chromid(chromid, motif, threshold, integration_log)
         result.extend(chromid_results)
     return result
