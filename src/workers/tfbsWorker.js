@@ -1,6 +1,5 @@
-const loadPyodide = (await import(
-  "https://cdn.jsdelivr.net/pyodide/v0.29.4/full/pyodide.mjs"
-)).loadPyodide;
+importScripts("https://cdn.jsdelivr.net/pyodide/v0.29.4/full/pyodide.js");
+// (sense l'import dinàmic a dalt)
 
 let pyodide = null;
 let cancelRequested = false;
