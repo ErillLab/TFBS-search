@@ -38,9 +38,10 @@ def set_cancel_flag(value: bool):
     Fallback: set the cancel flag directly.
     Used if SharedArrayBuffer is unavailable (e. g. GitHub Pages).
     """
-    if _cancel_view is not None:
-        _cancel_view[0] = 1 if value else 0
-    # global _cancel_flag
+    # if _cancel_view is not None:
+    #     _cancel_view[0] = 1 if value else 0
+    global _cancel_flag
+    _cancel_flag = value
 
 
 def check_cancel():
