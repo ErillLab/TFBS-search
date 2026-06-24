@@ -235,6 +235,8 @@ from tfbs.cancel_flag import set_cancel_view
 set_cancel_view(None)
             `);
         }
+        const { code, files } = payload;
+
         try {
             if (files) {
                 for (const f of files) {
