@@ -9,7 +9,7 @@ export function getTfbsWorker() {
     if (!worker) {
         
         worker = new Worker(
-            new URL("../workers/tfbsWorker.js", import.meta.url));
+            new URL("../workers/tfbsWorker.js", import.meta.url), { type: "module" });
 
 
         worker.onerror = (e) => {
@@ -18,6 +18,8 @@ export function getTfbsWorker() {
         worker.onmessageerror = (e) => {
             console.error("[tfbsWorker] MESSAGE ERROR:", e);
         }; 
+
+        worker.postMessage({type:"init", supportsSAB: cancelSupported});
 
         if(cancelSupported){
             cancelBuffer = new SharedArrayBuffer(1);

@@ -25,6 +25,7 @@ PIPELINE_STATE = {
     "motif_file": None,
     "computed_operon_distance": None,
     "genes_by_chromid": None,
+    "computed_threshold": None,
 }
 
 # def progress(msg):
@@ -173,6 +174,8 @@ def scan_if_needed(params):
         threshold_value=value,
     )
     
+    PIPELINE_STATE["computed_threshold"] = threshold
+    
     
     check_cancel()
     progress(f"Threshold set to {threshold:.3f}.")
@@ -285,7 +288,7 @@ def update_pipeline(
     progress("Pipeline finished.")
     metadata = {
         "num_hits": len(PIPELINE_STATE["hits"]) if PIPELINE_STATE["hits"] else 0,
-        "threshold": params["threshold_value"],
+        "threshold": PIPELINE_STATE["computed_threshold"],
         "motif_length": PIPELINE_STATE["motif"].length,
         "operon_distance_used": PIPELINE_STATE["computed_operon_distance"],
     }

@@ -72,14 +72,17 @@ export default{
       },
       thresholdMethod(newMethod){
         if (["fpr", "fnr", "balanced"].includes(newMethod)){
-          if(this.thresholdValue > 1)
-                this.thresholdValue = 1;
+          if(this.thresholdValue >= 1) this.thresholdValue = 0.999999;
+          if(this.thresholdValue <= 0) this.thresholdValue = 0.000001;
+                
         }
         this.emitParams();
       }, 
       thresholdValue(newValue){
-        if (["fpr", "fnr", "balanced"].includes(this.thresholdMethod) && newValue > 1) {
-          this.thresholdValue = 1;
+        if (["fpr", "fnr", "balanced"].includes(this.thresholdMethod)) {
+          if(newValue >= 1) this.thresholdValue = 0.999999;
+          else if(newValue <= 0) this.thresholdValue = 0.000001;
+          else this.thresholdValue = newValue;
         }
         this.emitParams();
 

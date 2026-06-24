@@ -1,5 +1,6 @@
-importScripts("https://cdn.jsdelivr.net/pyodide/v0.29.4/full/pyodide.js");
-// (sense l'import dinàmic a dalt)
+const loadPyodide = (await import(
+  "https://cdn.jsdelivr.net/pyodide/v0.29.4/full/pyodide.mjs"
+)).loadPyodide;
 
 let pyodide = null;
 let cancelRequested = false;
@@ -97,9 +98,15 @@ def progress(msg):
 }
 loadPyodideAndPackages();
 
-onmessage = async (event) => {
+self.onmessage = async (event) => {
     console.log("[WORKER] Recived:", event.data)
     const { type, payload } = event.data;
+
+    if(type === "init") {
+        if(!event.data.supportsSAB) {
+            cancelView = null;
+        }
+    }
 
     if (type === "init-cancel-buffer") {
         cancelView = new Uint8Array(event.data.buffer);
@@ -230,11 +237,15 @@ Motif.load_motif("/tmp/motif_from_text.txt")
             await pyodide.runPythonAsync(`
 from tfbs.cancel_flag import set_cancel_view
 set_cancel_view(_cancel_view)
+from tfbs.cancel_flag import set_cancel_flag
+set_cancel_flag(False)
             `);
         } else {
             await pyodide.runPythonAsync(`
 from tfbs.cancel_flag import set_cancel_view
 set_cancel_view(None)
+from tfbs.cancel_flag import set_cancel_flag
+set_cancel_flag(False)
             `);
         }
         
@@ -277,12 +288,14 @@ set_cancel_view(None)
 //     `);
 //         return;
         if(cancelView) {
-            Atomics.store(cancelView, 0, 1);
+            // Atomics.store(cancelView, 0, 1);
+            cancelView[0] = 1;
         } else {
             pyodide.runPython(`
 from tfbs.cancel_flag import set_cancel_flag
 set_cancel_flag(True)
         `);
         }
+    return;
     }
 };
