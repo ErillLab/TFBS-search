@@ -211,19 +211,30 @@ Motif.load_motif("/tmp/motif_from_text.txt")
   /* ---------------- EXECUCIÓ DEL PIPELINE ---------------- */
     
     if (type === "run") {
-        if(cancelView) Atomics.store(cancelView,0, 0);
-        cancelRequested = false;
-        const { code, files } = payload;
+//         if(cancelView) Atomics.store(cancelView,0, 0);
+//         cancelRequested = false;
+//         const { code, files } = payload;
 
-//          await pyodide.runPythonAsync(`
-// from tfbs.cancel_flag import set_cancel_flag
-// set_cancel_flag(False) `);
-        pyodide.globals.set("_cancel_view", cancelView);
-        await pyodide.runPythonAsync(`
+// //          await pyodide.runPythonAsync(`
+// // from tfbs.cancel_flag import set_cancel_flag
+// // set_cancel_flag(False) `);
+//         pyodide.globals.set("_cancel_view", cancelView);
+//         await pyodide.runPythonAsync(`
+// from tfbs.cancel_flag import set_cancel_view
+// set_cancel_view(_cancel_view)
+//         `);
+        if (cancelView !== null) {
+            pyodide.globals.set("_cancel_view", cancelView);
+            await pyodide.runPythonAsync(`
 from tfbs.cancel_flag import set_cancel_view
 set_cancel_view(_cancel_view)
-        `);
-
+            `);
+        } else {
+            await pyodide.runPythonAsync(`
+from tfbs.cancel_flag import set_cancel_view
+set_cancel_view(None)
+            `);
+        }
         try {
             if (files) {
                 for (const f of files) {
