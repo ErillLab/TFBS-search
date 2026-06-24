@@ -67,12 +67,7 @@ def load_from_accession(accession, email="test@example.com"):
     logger.info(f"Successfully loaded {len(records)} records for {len(accession)} accessions")
     return records
 
-def load_from_species(species_name):
-    """
-    Load genome data by species name.
-    This functionality is not implemented yet.
-    """
-    raise NotImplementedError("Loading from species is not implemented yet")
+
 
 def load_genome(data, email="test@example.com"):
     sample = data[0] if isinstance(data, list) else data

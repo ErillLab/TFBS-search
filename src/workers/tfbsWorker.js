@@ -223,7 +223,9 @@ Motif.load_motif("/tmp/motif_from_text.txt")
 // from tfbs.cancel_flag import set_cancel_view
 // set_cancel_view(_cancel_view)
 //         `);
+        const { code, files } = payload;
         if (cancelView !== null) {
+            Atomics.store(cancelView, 0, 0);
             pyodide.globals.set("_cancel_view", cancelView);
             await pyodide.runPythonAsync(`
 from tfbs.cancel_flag import set_cancel_view
@@ -235,7 +237,7 @@ from tfbs.cancel_flag import set_cancel_view
 set_cancel_view(None)
             `);
         }
-        const { code, files } = payload;
+        
 
         try {
             if (files) {
@@ -274,6 +276,13 @@ set_cancel_view(None)
 // set_cancel_flag(True)
 //     `);
 //         return;
-        if(cancelView) Atomics.store(cancelView, 0, 1);
+        if(cancelView) {
+            Atomics.store(cancelView, 0, 1);
+        } else {
+            pyodide.runPython(`
+from tfbs.cancel_flag import set_cancel_flag
+set_cancel_flag(True)
+        `);
+        }
     }
 };

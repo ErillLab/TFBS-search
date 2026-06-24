@@ -3,7 +3,7 @@ let worker = null;
 let readyPromise = null;
 let cancelBuffer = null;
 
-export const cancelSupported = typeof SharedArrayBuffer !== "undefined";
+export const cancelSupported = typeof SharedArrayBuffer !== "undefined" && crossOriginIsolated === true;
 
 export function getTfbsWorker() {
     if (!worker) {
@@ -47,8 +47,7 @@ export function getTfbsWorkerReady() {
 
 export function requestCancel() {
     if(cancelBuffer) {
-        const view = new Uint8Array(cancelBuffer);
-        Atomics.store(view, 0, 1);
+        Atomics.store(new Uint8Array(cancelBuffer), 0, 1);
     }
     else {
         const w = getTfbsWorker();
@@ -58,7 +57,6 @@ export function requestCancel() {
 
 export function clearCancelFlag() {
     if(cancelBuffer) {
-        const view = new Uint8Array(cancelBuffer);
-        Atomics.store(view, 0, 0);
+        Atomics.store(new Uint8Array(cancelBuffer), 0, 0);
     }
 }
