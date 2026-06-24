@@ -1,6 +1,7 @@
 <script>
 // import { runTfbsPipeline } from '@/services/tfbsService';
 import { runTfbsPipelineInWorker, cancelTfbsPipeline } from '@/services/tfbsWorkerClient';
+import { cancelSupported } from '@/services/tfbsWorkerInstance';
 export default{
     name: "PipelineRunner",
     props: {
@@ -16,6 +17,7 @@ export default{
             result: null,
             progressMessages: [],
             showHistory: false,
+            cancelSupported,
         };
     }, 
     computed: {
@@ -125,7 +127,10 @@ export default{
               <button class="btn btn-reset" @click="resetAll">
                 <i class="ti ti-trash"></i> Reset all
               </button>
-              <button v-if="running" @click="cancelPipeline" class="btn-cancel">Cancel</button>
+              <button v-if="running && cancelSupported" @click="cancelPipeline" class="btn-cancel">Cancel</button>
+              <span v-if="running && !cancelSupported" class="cancel-unavailable">
+                (cancel not available — requires COOP/COEP headers)
+              </span>
             </div>
         </div>
         <div v-if="running" class="run-progress">

@@ -1,16 +1,15 @@
 // src/services/tfbsWorkerInstance.js
 let worker = null;
 let readyPromise = null;
-
 let cancelBuffer = null;
+
+export const cancelSupported = typeof SharedArrayBuffer !== "undefined";
 
 export function getTfbsWorker() {
     if (!worker) {
-        cancelBuffer = new SharedArrayBuffer(1);
+        
         worker = new Worker(
-            new URL("../workers/tfbsWorker.js", import.meta.url),
-            { type: "module" }
-        );
+            new URL("../workers/tfbsWorker.js", import.meta.url));
 
 
         worker.onerror = (e) => {
@@ -20,8 +19,12 @@ export function getTfbsWorker() {
             console.error("[tfbsWorker] MESSAGE ERROR:", e);
         }; 
 
+        if(cancelSupported){
+            cancelBuffer = new SharedArrayBuffer(1);
+            worker.postMessage({type:"init-cancel-buffer", buffer: cancelBuffer })
+        }
         //Send the shared buffer to the worker 
-        worker.postMessage({type:"init-cancel-buffer", buffer: cancelBuffer })
+        
 
         readyPromise = new Promise((resolve) => {
             const handler = (e) => {
@@ -46,6 +49,10 @@ export function requestCancel() {
     if(cancelBuffer) {
         const view = new Uint8Array(cancelBuffer);
         Atomics.store(view, 0, 1);
+    }
+    else {
+        const w = getTfbsWorker();
+        w.postMessage({type: "cancel"});
     }
 }
 
