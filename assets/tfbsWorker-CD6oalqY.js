@@ -30,4 +30,4 @@ set_cancel_view(None)
             `):(e.globals.set(`_cancel_view`,t),await e.runPythonAsync(`
 from tfbs.cancel_flag import set_cancel_view
 set_cancel_view(_cancel_view)
-            `));try{if(files)for(let t of files)e.FS.writeFile(t.path,t.content);let t=await e.runPythonAsync(code);postMessage({type:`result`,result:t})}catch(e){e.message?.includes(`PipelineCancelledError`)?postMessage({type:`cancelled`}):postMessage({type:`error`,error:e.toString()})}}r===`cancel`&&t&&Atomics.store(t,0,1)}})();
+            `));let{code:n,files:r}=i;try{if(r)for(let t of r)e.FS.writeFile(t.path,t.content);let t=await e.runPythonAsync(n);postMessage({type:`result`,result:t})}catch(e){e.message?.includes(`PipelineCancelledError`)?postMessage({type:`cancelled`}):postMessage({type:`error`,error:e.toString()})}}r===`cancel`&&t&&Atomics.store(t,0,1)}})();
