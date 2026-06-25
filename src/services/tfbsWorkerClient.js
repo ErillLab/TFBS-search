@@ -96,9 +96,29 @@ export async function runTfbsPipelineInWorker({
     let genomeArg;
 
     if (genomeSource === "file") {
-        const genomeText = Array.isArray(genomeData) ? genomeData.join("\n") : genomeData;
-        files.push({ path: "/tmp/genome.gb", content: genomeText });
-        genomeArg = `genome_files=["/tmp/genome.gb"]`;
+        // Processar cada fitxer de genoma per separat amb el seu nom original
+        const genomeFiles = Array.isArray(genomeData) ? genomeData : [genomeData];
+        const genomePaths = [];
+        
+        for (const genomeFile of genomeFiles) {
+            let filename, content;
+            
+            // Manejar tant objectes {name, content} com strings de contingut pur
+            if (typeof genomeFile === 'object' && genomeFile.name && genomeFile.content) {
+                filename = genomeFile.name;
+                content = genomeFile.content;
+            } else {
+                // Retrocompatibilitat amb dades antigues (només contingut)
+                filename = "genome.gb";
+                content = genomeFile;
+            }
+            
+            const filepath = `/tmp/${filename}`;
+            files.push({ path: filepath, content });
+            genomePaths.push(`"${filepath}"`);
+        }
+        
+        genomeArg = `genome_files=[${genomePaths.join(", ")}]`;
     } else {
         const acc = JSON.stringify(Array.isArray(genomeData) ? genomeData : [genomeData]);
         genomeArg = `genome_accession=${acc}`;

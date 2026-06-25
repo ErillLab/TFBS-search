@@ -305,12 +305,10 @@ export default {
                 // const buffer = await file.arrayBuffer();
                 // const content = new Uint8Array(buffer);
                 const content = await file.text();
-                
                 const result = await genomeWorkerClient.validateGenomeFile({
                     filename: file.name,
                     content,
                 });
-                console.log("validate genome result: ", result);
                 if(result.ok){
                     this.uploadedFiles.push({
                         name: file.name,
@@ -323,7 +321,7 @@ export default {
             }
             this.$emit('genome-loaded', {
             source: 'file',
-            data: this.uploadedFiles.map(g => g.content)
+            data: this.uploadedFiles.map(g => ({name: g.name, content: g.content}))
         })
         },
 
@@ -348,7 +346,7 @@ export default {
                 }
             }
             this.loadingAccession = false
-            this.$emit('genome-loaded', { source: 'accession', data: [...accessions] });
+            this.$emit('genome-loaded', { source: 'accession', data: this.uploadedAccessions.map(a => a.accession) });
         
         },
         onSpeciesConfirmed({ accessions, assemblyName }) {
@@ -426,7 +424,7 @@ export default {
 
             this.$emit('genome-loaded', {
                 source: 'file',
-                data: this.uploadedFiles.map(g => g.content)
+                data: this.uploadedFiles.map(g => ({name: g.name, content: g.content}))
             })
         },
         removeAccession(index){
