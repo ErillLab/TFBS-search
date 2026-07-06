@@ -1,3 +1,4 @@
+// workers/tfbsWorker.js
 const loadPyodide = (await import(
   "https://cdn.jsdelivr.net/pyodide/v0.29.4/full/pyodide.mjs"
 )).loadPyodide;
